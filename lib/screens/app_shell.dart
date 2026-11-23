@@ -139,9 +139,8 @@ class HomePage extends StatelessWidget {
   final WorkspaceStore store;
   @override
   Widget build(BuildContext context) {
-    final tasks = store.ofKind('task');
-    final done = tasks.where((e) => e['done'] == true).length;
     final scheduleCount = store.ofKind('schedule').length;
+    final researchLogs = store.ofKind('log').where((e) => e['category'] == 'Research').toList();
     final ctf = store.ofKind('log').where((e) => e['category'] == 'CTF').length;
     final coding = store.ofKind('log').where((e) => e['category'] == 'LeetCode' || e['category'] == 'Contest').length;
     final reminders = store.ofKind('reminder').where((e) => e['done'] != true).toList()
@@ -168,7 +167,7 @@ class HomePage extends StatelessWidget {
       ),
       const SizedBox(height: 14),
       Row(children: [
-        Expanded(child: MetricBox('Tasks done', done.toString() + '/' + tasks.length.toString(), Icons.task_alt, Colors.green)),
+        Expanded(child: MetricBox('Research notes', researchLogs.length.toString(), Icons.science_outlined, Colors.green)),
         const SizedBox(width: 8),
         Expanded(child: MetricBox('CTF logs', ctf.toString(), Icons.flag, Colors.blue)),
         const SizedBox(width: 8),
@@ -176,10 +175,10 @@ class HomePage extends StatelessWidget {
       ]),
       const SizedBox(height: 20),
       const SectionLabel('Research workstreams', '4 active projects'),
-      ...projects.map((p) {
-        final list = tasks.where((e) => e['category'] == 'Research' && e['project'] == p).toList();
-        return ProjectCard(name: p, done: list.where((e) => e['done'] == true).length, total: list.length);
-      }),
+      ...projects.map((p) => ProjectCard(
+        name: p,
+        updates: researchLogs.where((e) => e['project'] == p).length,
+      )),
       const SizedBox(height: 12),
       SectionLabel('Upcoming reminders', reminders.length.toString() + ' active'),
       if (reminders.isEmpty) const EmptyPanel('Add CTF registrations, research deadlines or study reminders.')
@@ -290,13 +289,11 @@ class ResearchPage extends StatelessWidget {
   final WorkspaceStore store;
   @override
   Widget build(BuildContext context) {
-    final tasks = store.ofKind('task').where((e) => e['category'] == 'Research').toList();
     final logs = store.ofKind('log').where((e) => e['category'] == 'Research').toList()
       ..sort((a,b) => txt(b['updatedAt']).compareTo(txt(a['updatedAt'])));
     return ListView(padding: const EdgeInsets.all(16), children: [
       const PageHeading('Research workspace', 'Manage four parallel workstreams with weekly deliverables and notes.'),
       ...projects.map((p) {
-        final list = tasks.where((e) => e['project'] == p).toList();
         final count = logs.where((e) => e['project'] == p).length;
         return Card(margin: const EdgeInsets.only(bottom: 10), child: Padding(
           padding: const EdgeInsets.all(14),
@@ -305,9 +302,8 @@ class ResearchPage extends StatelessWidget {
             const SizedBox(height: 5),
             Text(projectInfo(p), style: TextStyle(color: Colors.grey.shade700, fontSize: 11)),
             const SizedBox(height: 10),
-            ProgressPanel('Weekly milestones', list.where((e) => e['done'] == true).length, list.length),
+            Text(count.toString() + ' research updates logged', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
             const SizedBox(height: 5),
-            Text(count.toString() + ' research updates logged', style: TextStyle(color: Colors.grey.shade600, fontSize: 10)),
             OutlinedButton.icon(
               onPressed: () => addActivity(context, store, category: 'Research', project: p),
               icon: const Icon(Icons.note_add_outlined), label: const Text('Add research update')),
@@ -468,9 +464,9 @@ class ProgressPanel extends StatelessWidget {
   }
 }
 class ProjectCard extends StatelessWidget {
-  const ProjectCard({super.key, required this.name, required this.done, required this.total});
+  const ProjectCard({super.key, required this.name, required this.updates});
   final String name;
-  final int done, total;
+  final int updates;
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 8),
@@ -481,7 +477,8 @@ class ProjectCard extends StatelessWidget {
       const SizedBox(height: 4),
       Text(projectInfo(name), style: TextStyle(color: Colors.grey.shade700, fontSize: 11)),
       const SizedBox(height: 9),
-      ProgressPanel('Weekly milestones', done, total),
+      Text(updates == 0 ? 'No research updates yet' : '$updates research updates logged',
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
     ]),
   );
 }
