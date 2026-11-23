@@ -105,7 +105,7 @@ class WorkspaceStore extends ChangeNotifier {
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
-          table: 'workspaces',
+          table: 'cybertrack_user_workspaces',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'user_id',
