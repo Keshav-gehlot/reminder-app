@@ -43,7 +43,7 @@ while n > 1:                # O(log n)
     keyPoints: ['Count how work scales, not exact steps.', 'Drop constants and smaller terms.', 'Space complexity matters too.'],
     complexity: 'Answers: O(n) · O(n²) · O(log n)',
     videoId: 'v4cd1O4zkGw',
-    videoTitle: 'Big O Notation (HackerRank)',
+    videoTitle: 'Big O Notation · HackerRank (Gayle Laakmann McDowell)',
     practice: [PracticeLink('LeetCode', 'Contains Duplicate (compare O(n²) vs O(n))', '${_lc}contains-duplicate/')],
   ),
   Lesson(
@@ -85,8 +85,8 @@ def range_sum(l, r):
 ''',
     keyPoints: ['O(n) to build, O(1) per query.', 'Use one extra leading 0.', 'Combine with hash maps for "sum equals k".'],
     complexity: 'Build O(n) · Query O(1) · Space O(n)',
-    videoId: 'xbYr9JOC2Lk',
-    videoTitle: 'Prefix Sum Array and Range Sum Queries',
+    videoId: 'bNvIQI2wAjk',
+    videoTitle: 'Product of Array Except Self: prefix and postfix · NeetCode',
     practice: [
       PracticeLink('LeetCode', 'Range Sum Query - Immutable', '${_lc}range-sum-query-immutable/'),
       PracticeLink('LeetCode', 'Subarray Sum Equals K', '${_lc}subarray-sum-equals-k/'),
@@ -127,8 +127,8 @@ def fact(n):
 ''',
     keyPoints: ['Base case + smaller subproblem.', 'Each call uses stack memory.', 'Trust the recursive call to do its job.'],
     complexity: 'fact(n): Time O(n) · Space O(n) stack',
-    videoId: 'YuaJ8x_NcLw',
-    videoTitle: 'Recursion, explained simply',
+    videoId: 'IJDJ0kBx2LM',
+    videoTitle: 'Recursion in Programming, full course · freeCodeCamp',
     practice: [PracticeLink('LeetCode', 'Fibonacci Number', '${_lc}fibonacci-number/'), PracticeLink('LeetCode', 'Pow(x, n)', '${_lc}powx-n/')],
   ),
   Lesson(
@@ -171,8 +171,8 @@ def merge_sort(a):
 ''',
     keyPoints: ['log n levels × O(n) merge = O(n log n).', 'Stable and predictable.', 'Needs O(n) extra space.'],
     complexity: 'Time O(n log n) · Space O(n)',
-    videoId: '3j0SWDX4AtU',
-    videoTitle: 'Learn Merge Sort in 13 minutes',
+    videoId: 'mB5HXBb_HY8',
+    videoTitle: 'Merge Sort algorithm · Abdul Bari',
     practice: [PracticeLink('LeetCode', 'Sort an Array', '${_lc}sort-an-array/'), PracticeLink('LeetCode', 'Merge Sorted Array', '${_lc}merge-sorted-array/')],
   ),
   Lesson(
@@ -210,8 +210,8 @@ for i, x in enumerate(nums):
 ''',
     keyPoints: ['collections.deque gives O(1) at both ends.', 'Monotonic deque keeps useful candidates only.', 'Each index enters and leaves once.'],
     complexity: 'Time O(n) · Space O(k)',
-    videoId: 'VicgT2GkSpw',
-    videoTitle: 'Sliding Window Maximum: monotonic deque walkthrough',
+    videoId: 'DfljaUwZsOk',
+    videoTitle: 'Sliding Window Maximum: monotonic queue · NeetCode',
     practice: [PracticeLink('LeetCode', 'Sliding Window Maximum', '${_lc}sliding-window-maximum/'), PracticeLink('LeetCode', 'Implement Queue using Stacks', '${_lc}implement-queue-using-stacks/')],
   ),
   Lesson(
@@ -248,8 +248,8 @@ for i, temp in enumerate(t):
 ''',
     keyPoints: ['Stack holds unresolved indices.', 'Each index pushed and popped once.', 'Same pattern: next greater element, histogram area.'],
     complexity: 'Time O(n) · Space O(n)',
-    videoId: '8t168IHD_50',
-    videoTitle: 'Daily Temperatures, visually explained',
+    videoId: 'cTBiBSnjO3c',
+    videoTitle: 'Daily Temperatures: monotonic stack · NeetCode',
     practice: [PracticeLink('LeetCode', 'Daily Temperatures', '${_lc}daily-temperatures/'), PracticeLink('LeetCode', 'Next Greater Element I', '${_lc}next-greater-element-i/')],
   ),
   Lesson(
@@ -285,7 +285,7 @@ def valid(node, lo=float('-inf'), hi=float('inf')):
     keyPoints: ['Pass bounds down the recursion.', 'Inorder = sorted.', 'Balance decides speed.'],
     complexity: 'Time O(n) · Space O(h)',
     videoId: 's6ATEkipzow',
-    videoTitle: 'Validate Binary Search Tree (NeetCode)',
+    videoTitle: 'Validate Binary Search Tree · NeetCode',
     practice: [PracticeLink('LeetCode', 'Validate Binary Search Tree', '${_lc}validate-binary-search-tree/'), PracticeLink('LeetCode', 'Kth Smallest Element in a BST', '${_lc}kth-smallest-element-in-a-bst/')],
   ),
   Lesson(
@@ -335,8 +335,8 @@ class Trie:
 ''',
     keyPoints: ['Cost depends on word length, not word count.', 'End marker separates words from prefixes.', 'Great for autocomplete.'],
     complexity: 'Each operation O(L) for length L',
-    videoId: 'YXefcFMpemo',
-    videoTitle: 'Implement Trie (Prefix Tree)',
+    videoId: 'oobqoCJlHA0',
+    videoTitle: 'Implement Trie (Prefix Tree) · NeetCode',
     practice: [PracticeLink('LeetCode', 'Implement Trie (Prefix Tree)', '${_lc}implement-trie-prefix-tree/'), PracticeLink('LeetCode', 'Word Search II', '${_lc}word-search-ii/')],
   ),
   Lesson(
@@ -371,8 +371,8 @@ for s, e in intervals:
 ''',
     keyPoints: ['Sort first.', 'Compare with the last merged interval.', 'Take max of ends.'],
     complexity: 'Time O(n log n) · Space O(n)',
-    videoId: 'dzNIPX7HY6A',
-    videoTitle: 'Merge Intervals (LeetCode 56)',
+    videoId: '44H3cEC2fFM',
+    videoTitle: 'Merge Intervals · NeetCode',
     practice: [PracticeLink('LeetCode', 'Merge Intervals', '${_lc}merge-intervals/'), PracticeLink('LeetCode', 'Insert Interval', '${_lc}insert-interval/')],
   ),
   Lesson(
@@ -411,7 +411,7 @@ return goal == 0
     keyPoints: ['Prove the greedy choice is safe.', 'Often O(n) after sorting.', 'Fall back to DP when unsure.'],
     complexity: 'Time O(n) · Space O(1)',
     videoId: 'Yan0cv2cLy8',
-    videoTitle: 'Jump Game: Greedy (NeetCode)',
+    videoTitle: 'Jump Game: greedy · NeetCode',
     practice: [PracticeLink('LeetCode', 'Jump Game', '${_lc}jump-game/'), PracticeLink('LeetCode', 'Gas Station', '${_lc}gas-station/')],
   ),
   Lesson(
@@ -447,8 +447,8 @@ def dfs(r, c):
 ''',
     keyPoints: ['Cells are nodes, 4 directions are edges.', 'Mark visited in place or in a set.', 'Check bounds first.'],
     complexity: 'Time O(R·C) · Space O(R·C)',
-    videoId: 'gCswsDauXPc',
-    videoTitle: 'Number of Islands: Graphs (Python)',
+    videoId: 'pV2kpPD66nE',
+    videoTitle: 'Number of Islands · NeetCode',
     practice: [PracticeLink('LeetCode', 'Number of Islands', '${_lc}number-of-islands/'), PracticeLink('LeetCode', 'Rotting Oranges', '${_lc}rotting-oranges/')],
   ),
   Lesson(
@@ -490,7 +490,7 @@ return order if len(order) == n else []   # [] means a cycle
     keyPoints: ['Only works on DAGs.', 'In-degree 0 = ready to take.', 'Leftover nodes mean a cycle.'],
     complexity: 'Time O(V + E) · Space O(V + E)',
     videoId: 'WAOfKpxYHR8',
-    videoTitle: 'Course Schedule I and II: topological sort',
+    videoTitle: 'Course Schedule I and II: topological sort · take U forward',
     practice: [PracticeLink('LeetCode', 'Course Schedule', '${_lc}course-schedule/'), PracticeLink('LeetCode', 'Course Schedule II', '${_lc}course-schedule-ii/')],
   ),
   Lesson(
@@ -533,8 +533,8 @@ components = n - sum(union(a, b) for a, b in edges)
 ''',
     keyPoints: ['find + union, nearly O(1) each.', 'Detects cycles in undirected graphs.', 'Base of Kruskal\'s algorithm.'],
     complexity: 'Time O(α(n)) per operation, practically constant',
-    videoId: 'PGZ64ob440I',
-    videoTitle: 'Disjoint Set Data Structure: Union Find tutorial',
+    videoId: 'ibjEGG7ylHk',
+    videoTitle: 'Union Find introduction · WilliamFiset',
     practice: [PracticeLink('LeetCode', 'Number of Provinces', '${_lc}number-of-provinces/'), PracticeLink('LeetCode', 'Redundant Connection', '${_lc}redundant-connection/')],
   ),
   Lesson(
@@ -574,8 +574,8 @@ while heap:
 ''',
     keyPoints: ['Greedy with a min-heap.', 'Non-negative weights only.', 'Skip stale heap entries.'],
     complexity: 'Time O((V + E) log V) · Space O(V)',
-    videoId: '_MTJEBK67hE',
-    videoTitle: 'Dijkstra algorithm clearly explained in 8 minutes',
+    videoId: 'pSqmAO-m7Lk',
+    videoTitle: 'Dijkstra\'s shortest path algorithm · WilliamFiset',
     practice: [PracticeLink('LeetCode', 'Network Delay Time', '${_lc}network-delay-time/'), PracticeLink('LeetCode', 'Path With Minimum Effort', '${_lc}path-with-minimum-effort/')],
   ),
   Lesson(
@@ -613,8 +613,8 @@ for i in range(1, m + 1):
 ''',
     keyPoints: ['State has two indices.', 'Extra row/column of zeros for empty prefixes.', 'Can reduce to two rows of memory.'],
     complexity: 'Time O(m·n) · Space O(m·n), or O(n) with rolling rows',
-    videoId: '4ClOkX0SWW4',
-    videoTitle: 'Longest Common Subsequence, visually explained',
+    videoId: 'Ua0GhsJSlWM',
+    videoTitle: 'Longest Common Subsequence: 2D DP · NeetCode',
     practice: [PracticeLink('LeetCode', 'Longest Common Subsequence', '${_lc}longest-common-subsequence/'), PracticeLink('LeetCode', 'Edit Distance', '${_lc}edit-distance/'), PracticeLink('LeetCode', 'Unique Paths', '${_lc}unique-paths/')],
   ),
   Lesson(
@@ -652,8 +652,8 @@ while n:
 ''',
     keyPoints: ['XOR cancels pairs.', 'n & (n−1) drops the lowest 1.', 'Shifts multiply or divide by 2.'],
     complexity: 'Time O(number of set bits) · Space O(1)',
-    videoId: '0WKVNMmpvME',
-    videoTitle: 'Number of 1 Bits (LeetCode 191)',
+    videoId: '5Km3utixwZs',
+    videoTitle: 'Number of 1 Bits · NeetCode',
     practice: [PracticeLink('LeetCode', 'Number of 1 Bits', '${_lc}number-of-1-bits/'), PracticeLink('LeetCode', 'Single Number', '${_lc}single-number/')],
   ),
 ];
@@ -691,8 +691,8 @@ const List<Lesson> aiLessons = [
 ''',
     keyPoints: ['AI ⊃ ML ⊃ DL.', 'Supervised, unsupervised, reinforcement.', 'Always evaluate on unseen data.'],
     complexity: 'Concept lesson',
-    videoId: 'ijGFB5kT3F4',
-    videoTitle: 'AI vs Machine Learning vs Deep Learning vs Generative AI',
+    videoId: 'q6kJ71tEYqM',
+    videoTitle: 'Machine Learning vs Deep Learning · IBM Technology',
     practice: [PracticeLink('Kaggle', 'Intro to Machine Learning', '${_kaggle}intro-to-machine-learning')],
   ),
   Lesson(
@@ -730,7 +730,7 @@ MSE = (1/n) × Σ (ŷᵢ − yᵢ)²
     keyPoints: ['ŷ = wx + b.', 'Minimise mean squared error.', 'R² measures fit quality.'],
     complexity: 'Training O(n·d) per pass for n samples, d features',
     videoId: 'nk2CQITm_eo',
-    videoTitle: 'Linear Regression, Clearly Explained (StatQuest)',
+    videoTitle: 'Linear Regression, clearly explained · StatQuest',
     practice: [PracticeLink('Kaggle', 'Intro to Machine Learning', '${_kaggle}intro-to-machine-learning')],
   ),
   Lesson(
@@ -764,7 +764,7 @@ w = w − learning_rate × ∂Loss/∂w
     keyPoints: ['Move against the gradient.', 'Learning rate controls step size.', 'Mini-batches balance speed and stability.'],
     complexity: 'One step costs one forward + backward pass over a batch',
     videoId: 'IHZwWFHWa-w',
-    videoTitle: 'Gradient descent, how neural networks learn (3Blue1Brown)',
+    videoTitle: 'Gradient descent, how neural networks learn · 3Blue1Brown',
     practice: [PracticeLink('Kaggle', 'Intro to Deep Learning', '${_kaggle}intro-to-deep-learning')],
   ),
   Lesson(
@@ -798,7 +798,7 @@ Confident wrong answers are punished heavily, which pushes the model to be well 
     keyPoints: ['Sigmoid maps to (0, 1).', 'Threshold turns probability into a class.', 'Trained with cross-entropy loss.'],
     complexity: 'Same training cost as linear regression',
     videoId: 'yIYKR4sgzI8',
-    videoTitle: 'StatQuest: Logistic Regression',
+    videoTitle: 'Logistic Regression · StatQuest',
     practice: [PracticeLink('Kaggle', 'Intro to Machine Learning', '${_kaggle}intro-to-machine-learning')],
   ),
   Lesson(
@@ -834,7 +834,7 @@ Confident wrong answers are punished heavily, which pushes the model to be well 
     keyPoints: ['Never evaluate on training data.', 'Watch the train–test gap.', 'Pick precision/recall to match the cost of mistakes.'],
     complexity: 'Concept lesson',
     videoId: 'EuBBz3bI-aA',
-    videoTitle: 'Machine Learning Fundamentals: Bias and Variance (StatQuest)',
+    videoTitle: 'Machine learning fundamentals: bias and variance · StatQuest',
     practice: [PracticeLink('Kaggle', 'Intermediate Machine Learning', '${_kaggle}intermediate-machine-learning')],
   ),
   Lesson(
@@ -866,7 +866,7 @@ Each node asks a question; leaves give the prediction.
     keyPoints: ['Splits maximise purity.', 'Deep trees overfit.', 'Forests reduce variance by voting.'],
     complexity: 'Tree training about O(n·d·log n)',
     videoId: '_L39rN6gz7Y',
-    videoTitle: 'Decision and Classification Trees, Clearly Explained (StatQuest)',
+    videoTitle: 'Decision and classification trees · StatQuest',
     practice: [PracticeLink('Kaggle', 'Intro to Machine Learning', '${_kaggle}intro-to-machine-learning')],
   ),
   Lesson(
@@ -899,7 +899,7 @@ Each node asks a question; leaves give the prediction.
     keyPoints: ['Unsupervised: no labels needed.', 'Assign → update, repeat.', 'Scale features; pick k with elbow or silhouette.'],
     complexity: 'O(n·k·iterations) per run',
     videoId: '4b5d3muPQmA',
-    videoTitle: 'StatQuest: K-means clustering',
+    videoTitle: 'K-means clustering · StatQuest',
     practice: [PracticeLink('Kaggle', 'Feature Engineering (clustering lesson)', '${_kaggle}feature-engineering')],
   ),
   Lesson(
@@ -933,7 +933,7 @@ output = activation(w₁x₁ + w₂x₂ + … + b)
     keyPoints: ['Weighted sum + bias + activation.', 'Non-linearity is essential.', 'Softmax for multi-class outputs.'],
     complexity: 'Forward pass cost ≈ number of weights',
     videoId: 'aircAruvnKk',
-    videoTitle: 'But what is a neural network? (3Blue1Brown)',
+    videoTitle: 'But what is a neural network? · 3Blue1Brown',
     practice: [PracticeLink('Kaggle', 'Intro to Deep Learning', '${_kaggle}intro-to-deep-learning')],
   ),
   Lesson(
@@ -966,7 +966,7 @@ Each factor is cheap and local, so one backward pass gives all gradients.
     keyPoints: ['Chain rule, applied backwards.', 'One backward pass gives all gradients.', 'Feeds gradient descent.'],
     complexity: 'Backward pass ≈ 2× the forward pass cost',
     videoId: 'Ilg3gGewQ5U',
-    videoTitle: 'Backpropagation, intuitively (3Blue1Brown)',
+    videoTitle: 'Backpropagation, intuitively · 3Blue1Brown',
     practice: [PracticeLink('Kaggle', 'Intro to Deep Learning', '${_kaggle}intro-to-deep-learning')],
   ),
   Lesson(
@@ -997,8 +997,8 @@ Sliding it over the image lights up vertical edges.
 ''',
     keyPoints: ['Shared filter weights → far fewer parameters.', 'Early layers see edges, later layers see objects.', 'Pooling reduces size.'],
     complexity: 'Cost ≈ image size × filter size × number of filters',
-    videoId: 'YGILT182T6w',
-    videoTitle: 'Convolutional Neural Networks (CNNs) explained',
+    videoId: 'HGwBXDKFk9I',
+    videoTitle: 'Image classification with CNNs · StatQuest',
     practice: [PracticeLink('Kaggle', 'Computer Vision', '${_kaggle}computer-vision')],
   ),
   Lesson(
@@ -1032,7 +1032,7 @@ Attention(Q, K, V) = softmax(Q·Kᵀ / √d) · V
     keyPoints: ['Next-token prediction, repeated.', 'Attention mixes information across tokens.', 'Verify outputs; beware prompt injection.'],
     complexity: 'Attention costs O(n²) in sequence length',
     videoId: 'wjZofJX0v4M',
-    videoTitle: 'Transformers, the tech behind LLMs (3Blue1Brown)',
+    videoTitle: 'Transformers, the tech behind LLMs · 3Blue1Brown',
     practice: [PracticeLink('Kaggle', 'Intro to Deep Learning', '${_kaggle}intro-to-deep-learning')],
   ),
 ];
