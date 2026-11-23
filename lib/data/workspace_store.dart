@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,10 +22,12 @@ String projectKey(String name) {
   }
 }
 
-String newWorkspaceId() =>
-    DateTime.now().microsecondsSinceEpoch.toString() +
-    '-' +
-    DateTime.now().millisecondsSinceEpoch.toString();
+String newWorkspaceId() {
+  final random = Random.secure();
+  return DateTime.now().microsecondsSinceEpoch.toString() +
+      '-' +
+      random.nextInt(1 << 32).toRadixString(16);
+}
 
 DateTime? parseWorkspaceDate(dynamic value) {
   if (value is! String) return null;
@@ -78,12 +81,21 @@ class WorkspaceStore extends ChangeNotifier {
 
   Future<void> activateUser(String userId) async {
     if (client == null || _userId == userId) return;
+    final previousUser = _userId;
     await _channel?.unsubscribe();
+
+    // Never carry one signed-in account's cached records into another account.
+    // First-time guest records can still be adopted into the first signed-in account.
+    if (previousUser != null && previousUser != userId) {
+      _replace(seedWorkspace());
+    }
     _userId = userId;
 
     final cached = await _preferences.getString(_cacheKey);
     if (cached != null) {
       _replace(mergeItems(_items, _decode(cached)));
+    } else if (_items.isEmpty) {
+      _replace(seedWorkspace());
     }
     await _persist();
     await syncNow();
