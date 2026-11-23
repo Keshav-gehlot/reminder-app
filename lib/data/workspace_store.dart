@@ -68,7 +68,7 @@ class WorkspaceStore extends ChangeNotifier {
         ..addAll(seedWorkspace());
       await _persist();
     } else {
-      _replace(_decode(raw));
+      _replace(mergeItems([], _decode(raw)));
     }
 
     final current = client?.auth.currentSession?.user.id;
@@ -152,7 +152,7 @@ class WorkspaceStore extends ChangeNotifier {
       _replace(seedWorkspace());
       await _persist();
     } else {
-      _replace(_decode(guest));
+      _replace(mergeItems([], _decode(guest)));
     }
     syncError = null;
     notifyListeners();
@@ -185,6 +185,7 @@ class WorkspaceStore extends ChangeNotifier {
     final byId = <String, Map<String, dynamic>>{};
     for (final item in [...local, ...remote]) {
       final id = item['id']?.toString() ?? '';
+      if (item['kind'] == 'task' && id.startsWith('task-w')) continue;
       if (id.isEmpty) continue;
       final previous = byId[id];
       final incomingTime =
@@ -300,92 +301,12 @@ List<Map<String, dynamic>> seedWorkspace() {
         'Communication, synchronization, latency and performance optimization.',
   };
 
-  final result = <Map<String, dynamic>>[];
-  for (var week = 1; week <= 12; week++) {
-    final phase = week <= 3
-        ? 'Foundation'
-        : week <= 6
-            ? 'Development'
-            : week <= 9
-                ? 'Implementation and validation'
-                : 'Consolidation';
-
-    result.addAll([
-      {
-        'id': 'task-w' + week.toString() + '-leetcode',
-        'kind': 'task',
-        'category': 'LeetCode',
-        'week': week,
-        'title': 'Solve 1–2 DSA problems',
-        'detail': 'Practice the current pattern and analyze complexity.',
-        'done': false,
-        'updatedAt': _seedTime,
-      },
-      {
-        'id': 'task-w' + week.toString() + '-timed-coding',
-        'kind': 'task',
-        'category': 'LeetCode',
-        'week': week,
-        'title': 'Timed coding practice',
-        'detail': 'Mock OA, contest or revision of failed problems.',
-        'done': false,
-        'updatedAt': _seedTime,
-      },
-      {
-        'id': 'task-w' + week.toString() + '-individual-ctf',
-        'kind': 'task',
-        'category': 'CTF',
-        'week': week,
-        'title': 'Individual CTF practice',
-        'detail': 'Solve challenges and write down the methodology.',
-        'done': false,
-        'updatedAt': _seedTime,
-      },
-      {
-        'id': 'task-w' + week.toString() + '-team-ctf',
-        'kind': 'task',
-        'category': 'CTF',
-        'week': week,
-        'title': 'Team CTF preparation',
-        'detail': 'Coordinate with teammates or take part in a live event.',
-        'done': false,
-        'updatedAt': _seedTime,
-      },
-      ...projects.entries.map((entry) => {
-            'id': 'task-w' +
-                week.toString() +
-                '-research-' +
-                projectKey(entry.key),
-            'kind': 'task',
-            'category': 'Research',
-            'project': entry.key,
-            'week': week,
-            'title': phase + ' milestone: ' + entry.key,
-            'detail': entry.value,
-            'done': false,
-            'updatedAt': _seedTime,
-          }),
-      {
-        'id': 'task-w' + week.toString() + '-weekly-review',
-        'kind': 'task',
-        'category': 'Planning',
-        'week': week,
-        'title': 'Weekly review and references',
-        'detail': 'Review progress and plan the next week.',
-        'done': false,
-        'updatedAt': _seedTime,
-      },
-    ]);
-  }
-
-  for (final entry in projects.entries) {
-    result.add({
-      'id': 'project-' + projectKey(entry.key),
-      'kind': 'project',
-      'title': entry.key,
-      'detail': entry.value,
-      'updatedAt': _seedTime,
-    });
-  }
-  return result;
+  // Start with project workspaces only. Study schedules are always user-created.
+  return projects.entries.map((entry) => {
+    'id': 'project-' + projectKey(entry.key),
+    'kind': 'project',
+    'title': entry.key,
+    'detail': entry.value,
+    'updatedAt': _seedTime,
+  }).toList();
 }
