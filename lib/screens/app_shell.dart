@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'learning_planner_pages.dart';
 import '../data/lessons.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/news_service.dart';
+import '../theme.dart';
+import '../widgets/voice_sheet.dart';
 
 import '../data/workspace_store.dart';
 
@@ -77,6 +81,11 @@ class _AppShellState extends State<AppShell> {
       body: AnimatedBuilder(
         animation: widget.store,
         builder: (context, _) => IndexedStack(index: tab, children: views),
+      ),
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Voice assistant',
+        onPressed: () => openVoiceAssistant(context, widget.store, (i) => setState(() => tab = i)),
+        child: const Icon(Icons.mic),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: tab,
@@ -228,6 +237,10 @@ class HomePage extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w800, color: accent)),
         ),
       ),
+      const SizedBox(height: 14),
+      TodayCard(store: store),
+      const SizedBox(height: 14),
+      const NewsSection(),
       const SizedBox(height: 14),
       Row(children: [
         Expanded(child: MetricBox('Research notes', researchLogs.length.toString(), Icons.science_outlined, Colors.green)),
@@ -594,4 +607,196 @@ class _TabbedSection extends StatelessWidget {
           Expanded(child: TabBarView(children: children)),
         ]),
       );
+}
+
+
+// ─────────────────────────── Done today ───────────────────────────
+
+class TodayCard extends StatelessWidget {
+  const TodayCard({super.key, required this.store});
+  final WorkspaceStore store;
+
+  bool _today(dynamic iso) {
+    final d = DateTime.tryParse(iso?.toString() ?? '')?.toLocal();
+    final n = DateTime.now();
+    return d != null && d.year == n.year && d.month == n.month && d.day == n.day;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = <(IconData, Color, String, String)>[];
+    for (final e in store.ofKind('lesson')) {
+      if (e['done'] == true && _today(e['doneAt'])) {
+        entries.add((Icons.school, AppColors.success, 'Solved', txt(e['title'])));
+      }
+    }
+    for (final e in store.ofKind('log')) {
+      if (_today(e['loggedAt'] ?? e['updatedAt'])) {
+        entries.add((Icons.edit_note, AppColors.primary, txt(e['category']).isEmpty ? 'Log' : txt(e['category']), txt(e['title'])));
+      }
+    }
+    final todayName = const ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][DateTime.now().weekday - 1];
+    final sessions = store.ofKind('schedule').where((e) => e['day'] == todayName).toList()
+      ..sort((a, b) => txt(a['startTime']).compareTo(txt(b['startTime'])));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.today, color: AppColors.primary),
+            const SizedBox(width: 8),
+            const Text('Today', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            const Spacer(),
+            Text('${entries.length} done', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.success)),
+          ]),
+          if (sessions.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            for (final s in sessions.take(3))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(children: [
+                  const Icon(Icons.schedule, size: 16, color: AppColors.muted),
+                  const SizedBox(width: 6),
+                  Text(txt(s['startTime']), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(txt(s['title']), overflow: TextOverflow.ellipsis)),
+                ]),
+              ),
+          ],
+          const SizedBox(height: 10),
+          if (entries.isEmpty)
+            const Text('Nothing logged yet. Tap the mic and say what you did, e.g. "I solved two sum".',
+                style: TextStyle(color: AppColors.muted, height: 1.4))
+          else
+            for (final e in entries.take(6))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  Icon(e.$1, size: 18, color: e.$2),
+                  const SizedBox(width: 8),
+                  Text('${e.$3}: ', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Expanded(child: Text(e.$4, overflow: TextOverflow.ellipsis)),
+                ]),
+              ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────── Daily tech news ───────────────────────────
+
+class NewsSection extends StatefulWidget {
+  const NewsSection({super.key});
+  @override
+  State<NewsSection> createState() => _NewsSectionState();
+}
+
+class _NewsSectionState extends State<NewsSection> {
+  late Future<List<NewsItem>> future = NewsService.load();
+
+  void refresh() => setState(() => future = NewsService.load(refresh: true));
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<NewsItem>>(
+      future: future,
+      builder: (context, snap) {
+        final items = snap.data ?? const <NewsItem>[];
+        final cyber = items.where((i) => i.cyber).toList();
+        final tech = items.where((i) => !i.cyber).toList();
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.newspaper, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Expanded(child: Text("Today's tech news", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+                IconButton(tooltip: 'Refresh', onPressed: refresh, icon: const Icon(Icons.refresh, color: AppColors.muted)),
+              ]),
+              if (snap.connectionState != ConnectionState.done)
+                const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()))
+              else if (items.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(0, 4, 8, 8),
+                  child: Text('Couldn\'t load news. Check your internet and tap refresh.', style: TextStyle(color: AppColors.muted)),
+                )
+              else ...[
+                _NewsGroup(label: 'Cybersecurity', color: AppColors.danger, items: cyber.take(3).toList()),
+                _NewsGroup(label: 'Tech', color: AppColors.primary, items: tech.take(3).toList()),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NewsPage(items: items))),
+                    child: Text('See all ${items.length} stories'),
+                  ),
+                ),
+              ],
+            ]),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _NewsGroup extends StatelessWidget {
+  const _NewsGroup({required this.label, required this.color, required this.items});
+  final String label;
+  final Color color;
+  final List<NewsItem> items;
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(
+        padding: const EdgeInsets.only(top: 6, bottom: 2),
+        child: Text(label.toUpperCase(), style: TextStyle(fontSize: 11, letterSpacing: 1, fontWeight: FontWeight.w800, color: color)),
+      ),
+      for (final n in items) NewsTile(item: n),
+    ]);
+  }
+}
+
+class NewsTile extends StatelessWidget {
+  const NewsTile({super.key, required this.item});
+  final NewsItem item;
+  @override
+  Widget build(BuildContext context) {
+    final age = DateTime.now().toUtc().difference(item.published);
+    final ago = age.inMinutes < 60 ? '${age.inMinutes}m ago' : (age.inHours < 24 ? '${age.inHours}h ago' : '${age.inDays}d ago');
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => launchUrl(Uri.parse(item.url), mode: LaunchMode.externalApplication),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35)),
+          const SizedBox(height: 3),
+          Text('${item.source} · $ago', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+        ]),
+      ),
+    );
+  }
+}
+
+class NewsPage extends StatelessWidget {
+  const NewsPage({super.key, required this.items});
+  final List<NewsItem> items;
+  @override
+  Widget build(BuildContext context) {
+    final cyber = items.where((i) => i.cyber).toList();
+    final tech = items.where((i) => !i.cyber).toList();
+    return Scaffold(
+      appBar: AppBar(title: const Text("Today's tech news")),
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+        Text('${items.length} stories · ${cyber.length} cybersecurity, ${tech.length} tech', style: const TextStyle(color: AppColors.muted)),
+        const SizedBox(height: 8),
+        _NewsGroup(label: 'Cybersecurity', color: AppColors.danger, items: cyber),
+        const Divider(height: 24),
+        _NewsGroup(label: 'Tech', color: AppColors.primary, items: tech),
+      ]),
+    );
+  }
 }

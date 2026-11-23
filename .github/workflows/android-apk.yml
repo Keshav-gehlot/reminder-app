@@ -50,6 +50,14 @@ jobs:
 
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           text = manifest.read_text()
+          if 'android.permission.RECORD_AUDIO' not in text:
+              text = text.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.RECORD_AUDIO"/>\n'
+                  '    <queries><intent><action android:name="android.speech.RecognitionService"/></intent>'
+                  '<intent><action android:name="android.intent.action.TTS_SERVICE"/></intent></queries>\n    <application',
+                  1,
+              )
           if 'android.permission.INTERNET' not in text:
               text = text.replace(
                   '<application',
@@ -128,6 +136,9 @@ jobs:
 
       - name: Analyze
         run: flutter analyze lib --no-pub --no-fatal-infos
+
+      - name: Unit tests
+        run: flutter test --no-pub
 
       - name: Build release APK
         env:
