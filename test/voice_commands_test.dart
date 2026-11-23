@@ -68,6 +68,12 @@ void main() {
     expect(a.tab, 1);
   });
 
+  test('complete reminder', () {
+    final a = parseVoiceCommand('Mark the paper reminder as done', now: now);
+    expect(a.intent, VoiceIntent.completeReminder);
+    expect(a.data['query'], 'paper');
+  });
+
   test('fallback note', () {
     expect(parseVoiceCommand('buy a new keyboard', now: now).intent, VoiceIntent.note);
   });

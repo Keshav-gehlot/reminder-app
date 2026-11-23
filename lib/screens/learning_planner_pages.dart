@@ -742,7 +742,7 @@ class _CustomTimetablePageState extends State<CustomTimetablePage> {
       content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
         TextField(controller:title,decoration:const InputDecoration(labelText:'Session / goal')),
         DropdownButtonFormField<String>(value:day,decoration:const InputDecoration(labelText:'Day'),items:days.map((d)=>DropdownMenuItem(value:d,child:Text(d))).toList(),onChanged:(v)=>setDialog(()=>day=v??day)),
-        DropdownButtonFormField<String>(value:subject,decoration:const InputDecoration(labelText:'Subject'),items:const ['CTF','DSA','Research','Revision','Contest','Other'].map((d)=>DropdownMenuItem(value:d,child:Text(d))).toList(),onChanged:(v)=>setDialog(()=>subject=v??subject)),
+        DropdownButtonFormField<String>(value:subject,decoration:const InputDecoration(labelText:'Subject'),items:const ['CTF','DSA','AI/ML','Research','Revision','Contest','Other'].map((d)=>DropdownMenuItem(value:d,child:Text(d))).toList(),onChanged:(v)=>setDialog(()=>subject=v??subject)),
         ListTile(contentPadding:EdgeInsets.zero,leading:const Icon(Icons.access_time),title:const Text('Start time'),trailing:Text(time,style:const TextStyle(fontWeight:FontWeight.w700,fontSize:16)),onTap:() async {
           final parts=time.split(':');
           final picked=await showTimePicker(context:ctx,initialTime:TimeOfDay(hour:int.parse(parts[0]),minute:int.parse(parts[1])));

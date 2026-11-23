@@ -1,7 +1,7 @@
 import '../data/lessons.dart';
 
 /// What a spoken (or typed) sentence asks the app to do.
-enum VoiceIntent { solveLesson, reminder, schedule, log, summary, navigate, note, unknown }
+enum VoiceIntent { completeReminder, solveLesson, reminder, schedule, log, summary, navigate, note, unknown }
 
 class VoiceAction {
   VoiceAction(this.intent, this.summary, {this.data = const {}, this.tab});
@@ -68,6 +68,17 @@ VoiceAction parseVoiceCommand(String raw, {DateTime? now}) {
       data: {'title': title.isEmpty ? 'Reminder' : title, 'dueAt': when},
       tab: 2,
     );
+  }
+
+  // 3b. Completing a reminder: "mark the paper reminder done", "I finished the reminder to call mom".
+  final doneRem = RegExp(r'\breminder\b').hasMatch(t) && RegExp(r'\b(done|complete|completed|finished|tick|check off)\b').hasMatch(t);
+  if (doneRem) {
+    final words = t
+        .replaceAll(RegExp(r'\b(mark|the|reminder|reminders|as|done|complete|completed|finished|i|to|tick|check|off|my|a)\b'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return VoiceAction(VoiceIntent.completeReminder, 'Mark reminder matching "${words.isEmpty ? 'latest' : words}" as done',
+        data: {'query': words}, tab: 2);
   }
 
   // 4. Timetable sessions.
@@ -174,7 +185,7 @@ String? _projectOf(String t) {
 
 String _subjectOf(String t) {
   if (RegExp(r'\b(ctf|hacking|security|tryhackme|htb|picoctf)\b').hasMatch(t)) return 'CTF';
-  if (RegExp(r'\b(ai|ml|machine learning|deep learning)\b').hasMatch(t)) return 'Other';
+  if (RegExp(r'\b(ai|ml|machine learning|deep learning)\b').hasMatch(t)) return 'AI/ML';
   if (RegExp(r'\b(research|paper)\b').hasMatch(t)) return 'Research';
   if (RegExp(r'\b(revision|revise)\b').hasMatch(t)) return 'Revision';
   if (RegExp(r'\b(contest)\b').hasMatch(t)) return 'Contest';

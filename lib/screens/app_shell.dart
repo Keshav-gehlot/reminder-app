@@ -259,7 +259,7 @@ class HomePage extends StatelessWidget {
       SectionLabel('Upcoming reminders', reminders.length.toString() + ' active'),
       if (reminders.isEmpty) const EmptyPanel('Add CTF registrations, research deadlines or study reminders.')
       else ...reminders.take(3).map((e) => ReminderCard(item: e,
-        onToggle: () => store.update(e, {'done': true}), onDelete: () => store.remove(e))),
+        onToggle: () => store.update(e, {'done': true, 'doneAt': DateTime.now().toUtc().toIso8601String()}), onDelete: () => store.remove(e))),
     ]);
   }
 }
@@ -306,11 +306,11 @@ class ReminderPage extends StatelessWidget {
       const SizedBox(height: 17),
       SectionLabel('Upcoming', active.length.toString() + ' active'),
       if (active.isEmpty) const EmptyPanel('No active reminders. Add a deadline or task.')
-      else ...active.map((e) => ReminderCard(item: e, onToggle: () => store.update(e, {'done': true}), onDelete: () => store.remove(e))),
+      else ...active.map((e) => ReminderCard(item: e, onToggle: () => store.update(e, {'done': true, 'doneAt': DateTime.now().toUtc().toIso8601String()}), onDelete: () => store.remove(e))),
       if (done.isNotEmpty) ...[
         const SizedBox(height: 12),
         SectionLabel('Completed', done.length.toString() + ' done'),
-        ...done.map((e) => ReminderCard(item: e, onToggle: () => store.update(e, {'done': false}), onDelete: () => store.remove(e))),
+        ...done.map((e) => ReminderCard(item: e, onToggle: () => store.update(e, {'done': false, 'doneAt': null}), onDelete: () => store.remove(e))),
       ],
     ]);
   }
@@ -628,6 +628,11 @@ class TodayCard extends StatelessWidget {
     for (final e in store.ofKind('lesson')) {
       if (e['done'] == true && _today(e['doneAt'])) {
         entries.add((Icons.school, AppColors.success, 'Solved', txt(e['title'])));
+      }
+    }
+    for (final e in store.ofKind('reminder')) {
+      if (e['done'] == true && _today(e['doneAt'])) {
+        entries.add((Icons.task_alt, AppColors.accent, 'Completed', txt(e['title'])));
       }
     }
     for (final e in store.ofKind('log')) {

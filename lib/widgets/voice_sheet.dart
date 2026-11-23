@@ -41,6 +41,7 @@ class _VoiceSheetState extends State<VoiceSheet> {
     'Add a CTF session on Friday at 7 pm for 90 minutes',
     'I did 3 LeetCode problems on graphs',
     'Worked on CROSSWITNESS literature review',
+    'Mark the paper reminder done',
     'What have I done today?',
   ];
 
@@ -143,6 +144,26 @@ class _VoiceSheetState extends State<VoiceSheet> {
           'notificationId': DateTime.now().microsecondsSinceEpoch % 2000000000,
         });
         reply = 'Reminder set.';
+      case VoiceIntent.completeReminder:
+        final q = (a.data['query'] as String).split(' ').where((w) => w.length > 2).toList();
+        final open = store.ofKind('reminder').where((e) => e['done'] != true).toList();
+        Map<String, dynamic>? match;
+        var best = 0;
+        for (final r in open) {
+          final title = (r['title'] ?? '').toString().toLowerCase();
+          final hits = q.where(title.contains).length;
+          if (hits > best) {
+            best = hits;
+            match = r;
+          }
+        }
+        if (match == null && q.isEmpty && open.isNotEmpty) match = open.first;
+        if (match == null) {
+          reply = 'I couldn\'t find an open reminder like that.';
+        } else {
+          await store.update(match, {'done': true, 'doneAt': DateTime.now().toUtc().toIso8601String()});
+          reply = 'Done: ${match['title']}.';
+        }
       case VoiceIntent.schedule:
         await store.upsert({'id': newWorkspaceId(), 'kind': 'schedule', ...a.data});
         reply = 'Added to your timetable.';
@@ -293,6 +314,7 @@ class _VoiceSheetState extends State<VoiceSheet> {
 
   IconData _iconFor(VoiceIntent i) => switch (i) {
         VoiceIntent.reminder => Icons.alarm_add,
+        VoiceIntent.completeReminder => Icons.task_alt,
         VoiceIntent.schedule => Icons.event_available,
         VoiceIntent.solveLesson => Icons.school,
         VoiceIntent.log => Icons.edit_note,
