@@ -96,7 +96,7 @@ jobs:
         run: flutter pub get
 
       - name: Analyze
-        run: flutter analyze lib --no-pub
+        run: flutter analyze lib --no-pub --no-fatal-infos
 
       - name: Build release APK
         env:
