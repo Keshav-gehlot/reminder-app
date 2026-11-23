@@ -183,6 +183,31 @@ class HomePage extends StatelessWidget {
         ]),
       ),
       const SizedBox(height: 14),
+      if (solvedIds.isEmpty && scheduleCount == 0) ...[
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Welcome! Start in 3 easy steps',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 10),
+              for (final step in const [
+                '1.  Open Study and try your first topic. Hints are there if you get stuck.',
+                '2.  Add a few study sessions to Timetable that fit your day.',
+                '3.  Log what you practice so you can see your progress grow.',
+              ])
+                Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(step, style: const TextStyle(height: 1.4))),
+              const SizedBox(height: 6),
+              Row(children: [
+                Expanded(child: FilledButton(onPressed: () => onOpenTab(2), child: const Text('Start learning'))),
+                const SizedBox(width: 8),
+                Expanded(child: OutlinedButton(onPressed: () => onOpenTab(1), child: const Text('Plan my week'))),
+              ]),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 14),
+      ],
       Card(
         child: ListTile(
           onTap: () => onOpenTab(2),

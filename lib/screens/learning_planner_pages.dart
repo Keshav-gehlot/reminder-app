@@ -39,6 +39,28 @@ Color _levelColor(String level) {
   }
 }
 
+int _levelRank(String level) =>
+    level == 'Beginner' ? 0 : (level == 'Intermediate' ? 1 : 2);
+
+int _streak(WorkspaceStore store) {
+  final days = <DateTime>{};
+  for (final e in store.ofKind('lesson')) {
+    if (e['done'] == true) {
+      final d = DateTime.tryParse(_str(e['doneAt']))?.toLocal();
+      if (d != null) days.add(DateTime(d.year, d.month, d.day));
+    }
+  }
+  final now = DateTime.now();
+  var day = DateTime(now.year, now.month, now.day);
+  if (!days.contains(day)) day = DateTime(day.year, day.month, day.day - 1);
+  var count = 0;
+  while (days.contains(day)) {
+    count++;
+    day = DateTime(day.year, day.month, day.day - 1);
+  }
+  return count;
+}
+
 class StudyPage extends StatefulWidget {
   const StudyPage({super.key, required this.store});
   final WorkspaceStore store;
@@ -57,13 +79,32 @@ class _StudyPageState extends State<StudyPage> {
         inArea.where((t) => _progressFor(store, t)?['done'] == true).length;
     final q = query.trim().toLowerCase();
     final list = inArea
-        .where((t) => level == 'All' || t.level == level)
+        .where((t) =>
+            level == 'All' ||
+            (level == 'To review'
+                ? _progressFor(store, t)?['confidence'] == 'review'
+                : t.level == level))
         .where((t) =>
             q.isEmpty ||
             t.title.toLowerCase().contains(q) ||
             t.question.toLowerCase().contains(q))
         .toList();
+    list.sort((a, b) {
+      final c = _levelRank(a.level).compareTo(_levelRank(b.level));
+      return c != 0 ? c : lessons.indexOf(a).compareTo(lessons.indexOf(b));
+    });
     final fraction = inArea.isEmpty ? 0.0 : solved / inArea.length;
+    final ordered = [...inArea]..sort((a, b) {
+        final c = _levelRank(a.level).compareTo(_levelRank(b.level));
+        return c != 0 ? c : lessons.indexOf(a).compareTo(lessons.indexOf(b));
+      });
+    final upNext = ordered
+        .where((t) => _progressFor(store, t)?['done'] != true)
+        .firstOrNull;
+    final streak = _streak(store);
+    final reviewCount = inArea
+        .where((t) => _progressFor(store, t)?['confidence'] == 'review')
+        .length;
 
     return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 28), children: [
       const Text('Study',
@@ -101,7 +142,28 @@ class _StudyPageState extends State<StudyPage> {
           ]),
         ),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 10),
+      Row(children: [
+        Expanded(child: _StatBox(Icons.local_fire_department, Colors.orange.shade700,
+            streak.toString(), streak == 1 ? 'day streak' : 'day streak')),
+        const SizedBox(width: 8),
+        Expanded(child: _StatBox(Icons.check_circle, Colors.green.shade700,
+            solved.toString(), 'solved')),
+        const SizedBox(width: 8),
+        Expanded(child: _StatBox(Icons.flag, _accent, reviewCount.toString(), 'to review')),
+      ]),
+      const SizedBox(height: 4),
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(
+          solved == 0
+              ? 'Start with the first topic. Beginner topics come first, then it gets harder.'
+              : streak > 1
+                  ? 'You are on a $streak-day streak. Keep it going with one topic today.'
+                  : 'Nice progress. One small topic a day builds up fast.',
+          style: TextStyle(color: Colors.grey.shade700, height: 1.4),
+        ),
+      ),
       TextField(
         decoration: const InputDecoration(
             prefixIcon: Icon(Icons.search), hintText: 'Search topics'),
@@ -111,7 +173,7 @@ class _StudyPageState extends State<StudyPage> {
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(children: [
-          for (final l in const ['All', 'Beginner', 'Intermediate', 'Advanced'])
+          for (final l in const ['All', 'Beginner', 'Intermediate', 'Advanced', 'To review'])
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: ChoiceChip(
@@ -132,6 +194,7 @@ class _StudyPageState extends State<StudyPage> {
       else
         ...list.map((t) => _LessonTile(
               lesson: t,
+              upNext: identical(t, upNext),
               progress: _progressFor(store, t),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => LessonPage(lesson: t, store: store))),
@@ -145,8 +208,9 @@ class _StudyPageState extends State<StudyPage> {
 }
 
 class _LessonTile extends StatelessWidget {
-  const _LessonTile({required this.lesson, required this.progress, required this.onTap});
+  const _LessonTile({required this.lesson, required this.progress, required this.onTap, this.upNext = false});
   final Lesson lesson;
+  final bool upNext;
   final Map<String, dynamic>? progress;
   final VoidCallback onTap;
 
@@ -174,12 +238,41 @@ class _LessonTile extends StatelessWidget {
             Text(lesson.level),
             const SizedBox(width: 12),
             Text('Hints $hintsUsed/${lesson.hints.length}'),
+            if (upNext) ...[
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: _accent, borderRadius: BorderRadius.circular(10)),
+                child: const Text('Up next', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+              ),
+            ],
           ]),
         ),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: progress?['confidence'] == 'review'
+            ? Icon(Icons.flag, color: Colors.orange.shade700)
+            : const Icon(Icons.chevron_right),
       ),
     );
   }
+}
+
+class _StatBox extends StatelessWidget {
+  const _StatBox(this.icon, this.color, this.value, this.label);
+  final IconData icon;
+  final Color color;
+  final String value, label;
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(children: [
+            Icon(icon, color: color),
+            const SizedBox(height: 4),
+            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+          ]),
+        ),
+      );
 }
 
 class LessonPage extends StatefulWidget {
@@ -192,6 +285,7 @@ class LessonPage extends StatefulWidget {
 
 class _LessonPageState extends State<LessonPage> {
   late final TextEditingController answer;
+  double noteSize = 16;
 
   @override
   void initState() {
@@ -222,6 +316,58 @@ class _LessonPageState extends State<LessonPage> {
         ' Give one hint at a time and do not reveal the full solution until I ask. Then explain the concept, approach, edge cases, and complexity.';
     await Clipboard.setData(ClipboardData(text: prompt));
     toast('Tutor prompt copied. Paste it into ChatGPT or Claude.');
+  }
+
+  Future<void> toggleSolved(bool done) async {
+    final t = widget.lesson;
+    if (done) {
+      await _saveProgress(widget.store, t, {'done': false, 'answer': answer.text});
+      return;
+    }
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Great work! How did that feel?',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.sentiment_very_satisfied),
+            title: const Text('Easy, I got it'),
+            onTap: () => Navigator.pop(ctx, 'easy'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.sentiment_satisfied),
+            title: const Text('Okay, with a few hints'),
+            onTap: () => Navigator.pop(ctx, 'ok'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.flag_outlined),
+            title: const Text('Need to review this again'),
+            subtitle: const Text('Adds it to your To review list'),
+            onTap: () => Navigator.pop(ctx, 'review'),
+          ),
+        ]),
+      ),
+    );
+    if (choice == null) return;
+    await _saveProgress(widget.store, t, {
+      'done': true,
+      'doneAt': DateTime.now().toUtc().toIso8601String(),
+      'confidence': choice,
+      'answer': answer.text,
+    });
+    final total = lessons.where((l) => l.area == t.area).length;
+    final solved = lessons
+        .where((l) => l.area == t.area && _progressFor(widget.store, l)?['done'] == true)
+        .length;
+    toast('Solved! $solved of $total ${t.area} topics done.');
   }
 
   Future<void> openVideo() async {
@@ -287,7 +433,12 @@ class _LessonPageState extends State<LessonPage> {
             color: const Color(0xFFEFEAFB),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text('Hint ${i + 1}: ${t.hints[i]}', style: const TextStyle(height: 1.45)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(i < 3 ? const ['Gentle nudge', 'Bigger hint', 'Almost there'][i] : 'Hint ${i + 1}',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: _accent)),
+            const SizedBox(height: 3),
+            Text(t.hints[i], style: const TextStyle(height: 1.45, fontSize: 15)),
+          ]),
         ),
       OutlinedButton.icon(
         onPressed: shown < t.hints.length
@@ -295,7 +446,7 @@ class _LessonPageState extends State<LessonPage> {
             : null,
         icon: const Icon(Icons.lightbulb_outline),
         label: Text(shown == 0
-            ? 'Reveal first hint'
+            ? 'Stuck? Reveal a gentle nudge'
             : shown < t.hints.length
                 ? 'Reveal next hint'
                 : 'All hints revealed'),
@@ -335,8 +486,7 @@ class _LessonPageState extends State<LessonPage> {
       SizedBox(
         width: double.infinity,
         child: FilledButton.icon(
-          onPressed: () => _saveProgress(
-              widget.store, t, {'done': !done, 'answer': answer.text}),
+          onPressed: () => toggleSolved(done),
           icon: Icon(done ? Icons.undo : Icons.check),
           label: Text(done ? 'Mark as not solved' : 'Mark as solved'),
         ),
@@ -358,8 +508,23 @@ class _LessonPageState extends State<LessonPage> {
           onTap: openVideo,
         ),
       ),
-      const SizedBox(height: 8),
-      ..._formatNotes(t.notes),
+      Row(children: [
+        const Icon(Icons.text_fields, size: 18),
+        const SizedBox(width: 6),
+        const Text('Text size'),
+        const Spacer(),
+        IconButton(
+          tooltip: 'Smaller text',
+          onPressed: noteSize > 13 ? () => setState(() => noteSize -= 1) : null,
+          icon: const Icon(Icons.remove_circle_outline),
+        ),
+        IconButton(
+          tooltip: 'Larger text',
+          onPressed: noteSize < 24 ? () => setState(() => noteSize += 1) : null,
+          icon: const Icon(Icons.add_circle_outline),
+        ),
+      ]),
+      ..._formatNotes(t.notes, noteSize),
       _callout('Solution approach', t.approach, Icons.route),
       _callout('Complexity and analysis', t.complexity, Icons.speed),
     ]);
@@ -385,7 +550,7 @@ class _LessonPageState extends State<LessonPage> {
       );
 
   // Turns the plain-text notes into headed sections with readable steps.
-  List<Widget> _formatNotes(String notes) {
+  List<Widget> _formatNotes(String notes, double size) {
     final widgets = <Widget>[];
     final heading = RegExp(r'^[A-Z0-9 /&()\-.]{3,}$');
     for (final block in notes.split('\n\n')) {
@@ -405,7 +570,7 @@ class _LessonPageState extends State<LessonPage> {
         final isStep = RegExp(r'^(\d+\.|-)\s').hasMatch(line.trim());
         widgets.add(Padding(
           padding: EdgeInsets.only(top: 4, left: isStep ? 8 : 0),
-          child: SelectableText(line.trim(), style: const TextStyle(height: 1.5, fontSize: 15)),
+          child: SelectableText(line.trim(), style: TextStyle(height: 1.55, fontSize: size)),
         ));
       }
     }
