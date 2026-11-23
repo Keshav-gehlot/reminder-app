@@ -2,31 +2,31 @@
 -- Each account owns one JSON workspace. The RPC serializes merges under a row lock.
 -- Items are merged by stable id; latest updatedAt wins. Keep deleted items as tombstones.
 
-create table if not exists public.workspaces (
+create table if not exists public.cybertrack_user_workspaces (
   user_id uuid primary key references auth.users(id) on delete cascade,
   items jsonb not null default '[]'::jsonb
     check (jsonb_typeof(items) = 'array'),
   updated_at timestamptz not null default now()
 );
 
-alter table public.workspaces enable row level security;
+alter table public.cybertrack_user_workspaces enable row level security;
 
-revoke all on table public.workspaces from anon;
-grant select, insert, update on table public.workspaces to authenticated;
+revoke all on table public.cybertrack_user_workspaces from anon;
+grant select, insert, update on table public.cybertrack_user_workspaces to authenticated;
 
-drop policy if exists "Users can read their own workspace" on public.workspaces;
+drop policy if exists "Users can read their own workspace" on public.cybertrack_user_workspaces;
 create policy "Users can read their own workspace"
-  on public.workspaces for select to authenticated
+  on public.cybertrack_user_workspaces for select to authenticated
   using ((select auth.uid()) = user_id);
 
-drop policy if exists "Users can create their own workspace" on public.workspaces;
+drop policy if exists "Users can create their own workspace" on public.cybertrack_user_workspaces;
 create policy "Users can create their own workspace"
-  on public.workspaces for insert to authenticated
+  on public.cybertrack_user_workspaces for insert to authenticated
   with check ((select auth.uid()) = user_id);
 
-drop policy if exists "Users can update their own workspace" on public.workspaces;
+drop policy if exists "Users can update their own workspace" on public.cybertrack_user_workspaces;
 create policy "Users can update their own workspace"
-  on public.workspaces for update to authenticated
+  on public.cybertrack_user_workspaces for update to authenticated
   using ((select auth.uid()) = user_id)
   with check ((select auth.uid()) = user_id);
 
@@ -53,13 +53,13 @@ begin
     raise exception 'p_items must be a JSON array';
   end if;
 
-  insert into public.workspaces (user_id, items)
+  insert into public.cybertrack_user_workspaces (user_id, items)
   values (v_user_id, '[]'::jsonb)
   on conflict (user_id) do nothing;
 
   select items
     into v_server_items
-    from public.workspaces
+    from public.cybertrack_user_workspaces
    where user_id = v_user_id
    for update;
 
@@ -86,7 +86,7 @@ begin
     into v_result
     from jsonb_each(v_merged_map);
 
-  update public.workspaces
+  update public.cybertrack_user_workspaces
      set items = v_result,
          updated_at = now()
    where user_id = v_user_id;
@@ -110,7 +110,7 @@ begin
           and tablename = 'workspaces'
      )
   then
-    execute 'alter publication supabase_realtime add table public.workspaces';
+    execute 'alter publication supabase_realtime add table public.cybertrack_user_workspaces';
   end if;
 end;
 $publication$;
