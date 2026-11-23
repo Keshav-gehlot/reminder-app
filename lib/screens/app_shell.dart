@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'learning_planner_pages.dart';
-import 'sync_setup_screen.dart';
 import '../data/lessons.dart';
 
 import '../data/workspace_store.dart';
@@ -103,7 +102,7 @@ class _AppShellState extends State<AppShell> {
           builder: (context, _) {
             final email = widget.client?.auth.currentUser?.email ?? 'Local-only mode';
             final status = !widget.store.cloudConfigured
-              ? 'Cloud sync is not configured; data stays on this device.'
+              ? 'Your data is saved on this phone.'
               : widget.store.syncError != null
                 ? 'Sync issue: ' + widget.store.syncError!
                 : widget.store.syncing ? 'Syncing…'
@@ -123,17 +122,7 @@ class _AppShellState extends State<AppShell> {
                 } : null,
                 icon: const Icon(Icons.sync), label: const Text('Sync now'),
               )),
-              TextButton.icon(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(
-                      builder: (_) => const SyncSetupScreen()));
-                  if (saved == true) widget.onReload();
-                },
-                icon: const Icon(Icons.cloud_outlined),
-                label: const Text('Cloud sync setup'),
-              ),
-              if (widget.client?.auth.currentSession == null)
+              if (widget.client != null && widget.client?.auth.currentSession == null)
                 FilledButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);

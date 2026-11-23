@@ -48,7 +48,7 @@ class _RootState extends State<Root> {
 
   Future<_Boot> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final url = supabaseUrl.isNotEmpty ? supabaseUrl : (prefs.getString(prefsUrlKey) ?? '');
+    final url = supabaseUrl.isNotEmpty ? supabaseUrl : (prefs.getString(prefsUrlKey) ?? defaultSupabaseUrl);
     final key = supabasePublishableKey.isNotEmpty ? supabasePublishableKey : (prefs.getString(prefsKeyKey) ?? '');
     SupabaseClient? client;
     final keyOk = key.startsWith('sb_publishable_') || key.startsWith('eyJ');

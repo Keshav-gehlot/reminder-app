@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart' show LaunchMode;
 
 import '../theme.dart';
-import 'sync_setup_screen.dart';
 
 /// First screen on a fresh install: sign in with Google or an email code,
 /// or continue without an account. Works even before cloud is connected:
@@ -36,18 +35,15 @@ class _LoginScreenState extends State<LoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  /// Returns the client, asking the user to connect cloud sync first if needed.
-  Future<SupabaseClient?> ensureClient() async {
-    if (widget.client != null) return widget.client;
-    final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const SyncSetupScreen(firstRun: true)),
-    );
-    if (saved == true) widget.onConnected();
-    return null;
+  /// Sign-in needs the cloud project built into the app.
+  SupabaseClient? ensureClient() {
+    final c = widget.client;
+    if (c == null) message('Sign-in is not available in this build yet. Tap "Continue without an account".');
+    return c;
   }
 
   Future<void> google() async {
-    final client = await ensureClient();
+    final client = ensureClient();
     if (client == null) return;
     setState(() => busy = true);
     try {
@@ -68,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> sendCode() async {
-    final client = await ensureClient();
+    final client = ensureClient();
     if (client == null) return;
     final address = email.text.trim();
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(address)) {
@@ -143,6 +139,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 const _Benefit(Icons.science_outlined, 'HTB, TryHackMe and picoCTF labs per topic'),
                 const _Benefit(Icons.sync, 'Progress synced on every device'),
                 const SizedBox(height: 28),
+                if (widget.client == null)
+                  FilledButton(onPressed: widget.onSkip, child: const Text('Get started'))
+                else ...[
                 FilledButton.icon(
                   onPressed: busy ? null : google,
                   style: FilledButton.styleFrom(backgroundColor: AppColors.ink),
@@ -206,6 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: AppColors.muted, height: 1.4),
                 ),
+                ],
               ]),
             ),
           ),
