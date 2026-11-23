@@ -141,8 +141,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final tasks = store.ofKind('task');
     final done = tasks.where((e) => e['done'] == true).length;
-    final weekly = store.ofWeek(1);
-    final weekDone = weekly.where((e) => e['done'] == true).length;
+    final scheduleCount = store.ofKind('schedule').length;
     final ctf = store.ofKind('log').where((e) => e['category'] == 'CTF').length;
     final coding = store.ofKind('log').where((e) => e['category'] == 'LeetCode' || e['category'] == 'Contest').length;
     final reminders = store.ofKind('reminder').where((e) => e['done'] != true).toList()
@@ -158,17 +157,13 @@ class HomePage extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('YOUR LEARNING & RESEARCH WORKSPACE', style: TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 1)),
           const SizedBox(height: 10),
-          const Text('Make steady progress.', style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w800)),
-          const Text('CTF · LeetCode · Reminders · Research', style: TextStyle(color: Colors.white70)),
+          const Text('Your plan, your pace.', style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w800)),
+          const Text('Custom timetable · CTF · DSA · Research', style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 18),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            const Text('Week 1 of 12', style: TextStyle(color: Colors.white)),
-            Text(weekly.isEmpty ? '0%' : (weekDone * 100 ~/ weekly.length).toString() + '%', style: const TextStyle(color: Colors.white)),
+            const Text('Personal study sessions', style: TextStyle(color: Colors.white)),
+            Text(scheduleCount.toString(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
           ]),
-          const SizedBox(height: 8),
-          ClipRRect(borderRadius: BorderRadius.circular(20), child: LinearProgressIndicator(
-            value: weekly.isEmpty ? 0 : weekDone / weekly.length, minHeight: 8,
-            backgroundColor: Colors.white24, color: Colors.white)),
         ]),
       ),
       const SizedBox(height: 14),
