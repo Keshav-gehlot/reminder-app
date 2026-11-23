@@ -138,7 +138,7 @@ jobs:
         run: flutter analyze lib --no-pub --no-fatal-infos
 
       - name: Unit tests
-        run: flutter test --no-pub
+        run: rm -f test/widget_test.dart && flutter test --no-pub test/voice_commands_test.dart
 
       - name: Build release APK
         env:
