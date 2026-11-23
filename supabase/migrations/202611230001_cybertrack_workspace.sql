@@ -107,7 +107,7 @@ begin
          from pg_publication_tables
         where pubname = 'supabase_realtime'
           and schemaname = 'public'
-          and tablename = 'workspaces'
+          and tablename = 'cybertrack_user_workspaces'
      )
   then
     execute 'alter publication supabase_realtime add table public.cybertrack_user_workspaces';
