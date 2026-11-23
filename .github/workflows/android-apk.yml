@@ -68,6 +68,17 @@ jobs:
                   '</application>',
                   1,
               )
+          if 'login-callback' not in text:
+              text = text.replace(
+                  '</activity>',
+                  '    <intent-filter>'
+                  '<action android:name="android.intent.action.VIEW"/>'
+                  '<category android:name="android.intent.category.DEFAULT"/>'
+                  '<category android:name="android.intent.category.BROWSABLE"/>'
+                  '<data android:scheme="com.keshavgehlot.cybertrack12" android:host="login-callback"/>'
+                  '</intent-filter>\n        </activity>',
+                  1,
+              )
           text = text.replace('android:label="cybertrack12"', 'android:label="CyberTrack 12"')
           manifest.write_text(text)
 

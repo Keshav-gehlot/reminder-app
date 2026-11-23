@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'learning_planner_pages.dart';
 import 'sync_setup_screen.dart';
+import '../data/lessons.dart';
 
 import '../data/workspace_store.dart';
 
@@ -33,7 +34,7 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final views = [
-      HomePage(store: widget.store),
+      HomePage(store: widget.store, onOpenTab: (i) => setState(() => tab = i)),
       CustomTimetablePage(store: widget.store),
       StudyPage(store: widget.store),
       PracticePage(store: widget.store),
@@ -145,8 +146,9 @@ class _AppShellState extends State<AppShell> {
 }
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key, required this.store});
+  const HomePage({super.key, required this.store, required this.onOpenTab});
   final WorkspaceStore store;
+  final void Function(int) onOpenTab;
   @override
   Widget build(BuildContext context) {
     final scheduleCount = store.ofKind('schedule').length;
@@ -155,6 +157,11 @@ class HomePage extends StatelessWidget {
     final coding = store.ofKind('log').where((e) => e['category'] == 'LeetCode' || e['category'] == 'Contest').length;
     final reminders = store.ofKind('reminder').where((e) => e['done'] != true).toList()
       ..sort((a,b) => (dateOf(a['dueAt']) ?? DateTime(2100)).compareTo(dateOf(b['dueAt']) ?? DateTime(2100)));
+
+    final solvedIds = store.ofKind('lesson').where((e) => e['done'] == true).map((e) => e['id']).toSet();
+    final nextLesson = lessons.where((l) => !solvedIds.contains(l.id)).firstOrNull;
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
     return ListView(padding: const EdgeInsets.all(16), children: [
       Container(
@@ -166,7 +173,7 @@ class HomePage extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('YOUR LEARNING & RESEARCH WORKSPACE', style: TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 1)),
           const SizedBox(height: 10),
-          const Text('Your plan, your pace.', style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w800)),
+          Text(greeting + '.', style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w800)),
           const Text('Custom timetable · CTF · DSA · Research', style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 18),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -174,6 +181,22 @@ class HomePage extends StatelessWidget {
             Text(scheduleCount.toString(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
           ]),
         ]),
+      ),
+      const SizedBox(height: 14),
+      Card(
+        child: ListTile(
+          onTap: () => onOpenTab(2),
+          leading: const CircleAvatar(
+              backgroundColor: Color(0xFFEFEAFB),
+              child: Icon(Icons.menu_book_outlined, color: accent)),
+          title: Text(nextLesson == null ? 'All study topics solved' : 'Continue learning',
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          subtitle: Text(nextLesson == null
+              ? 'Great work. Revisit notes any time.'
+              : nextLesson.area + ' · ' + nextLesson.title),
+          trailing: Text(solvedIds.length.toString() + '/' + lessons.length.toString(),
+              style: const TextStyle(fontWeight: FontWeight.w800, color: accent)),
+        ),
       ),
       const SizedBox(height: 14),
       Row(children: [

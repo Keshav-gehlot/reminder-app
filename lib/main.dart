@@ -110,6 +110,22 @@ class _CyberTrackAppState extends State<CyberTrackApp>
           seedColor: const Color(0xFF7665D8),
           brightness: Brightness.light,
         ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+        ),
+        snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+        navigationBarTheme: const NavigationBarThemeData(
+          backgroundColor: Colors.white,
+          indicatorColor: Color(0xFFE3DCFA),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+              minimumSize: const Size(64, 48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+        ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFFF6F5FA),
           foregroundColor: Color(0xFF24213A),

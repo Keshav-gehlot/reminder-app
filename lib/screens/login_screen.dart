@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart' show LaunchMode;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -25,6 +26,23 @@ class _LoginScreenState extends State<LoginScreen> {
   void message(String text) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  static const redirect = 'com.keshavgehlot.cybertrack12://login-callback';
+
+  Future<void> signInWithGoogle() async {
+    setState(() => busy = true);
+    try {
+      await widget.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: redirect,
+        authScreenLaunchMode: LaunchMode.externalApplication,
+      );
+    } catch (error) {
+      message('Google sign-in failed: ' + error.toString());
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   Future<void> sendCode() async {
@@ -95,11 +113,35 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
                   Text(
-                    'Sign in with the same email on every Android device to share reminders, CTF practice, LeetCode progress and research notes.',
+                    'Sign in with the same Google account or email on every Android device to share reminders, CTF practice, LeetCode progress and research notes.',
                     style: TextStyle(
                         color: Colors.grey.shade700, height: 1.5),
                   ),
                   const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: busy ? null : signInWithGoogle,
+                      icon: const Text('G',
+                          style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF4285F4))),
+                      label: const Text('Continue with Google'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text('or use an email code',
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                    ),
+                    const Expanded(child: Divider()),
+                  ]),
+                  const SizedBox(height: 16),
                   TextField(
                     controller: email,
                     keyboardType: TextInputType.emailAddress,
