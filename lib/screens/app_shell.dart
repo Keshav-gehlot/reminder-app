@@ -188,50 +188,6 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class PlannerPage extends StatefulWidget {
-  const PlannerPage({super.key, required this.store});
-  final WorkspaceStore store;
-  @override
-  State<PlannerPage> createState() => _PlannerPageState();
-}
-class _PlannerPageState extends State<PlannerPage> {
-  int week = 1;
-  @override
-  Widget build(BuildContext context) {
-    final tasks = widget.store.ofWeek(week);
-    final done = tasks.where((e) => e['done'] == true).length;
-    final groups = <String, List<Map<String,dynamic>>>{};
-    for (final item in tasks) {
-      groups.putIfAbsent(txt(item['category']), () => []).add(item);
-    }
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      const PageHeading('12-week planner', 'Your weekly CTF, LeetCode and research checklist.'),
-      DropdownButtonFormField<int>(
-        value: week,
-        decoration: const InputDecoration(labelText: 'Select roadmap week'),
-        items: List.generate(12, (i) => DropdownMenuItem(value: i + 1, child: Text('Week ' + (i + 1).toString()))),
-        onChanged: (v) => setState(() => week = v ?? 1),
-      ),
-      const SizedBox(height: 12),
-      ProgressPanel('Week ' + week.toString(), done, tasks.length),
-      ...groups.entries.map((group) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(padding: const EdgeInsets.fromLTRB(2,16,2,8), child: Text(group.key, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
-        ...group.value.map((item) => Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
-          child: CheckboxListTile(
-            value: item['done'] == true, activeColor: accent,
-            controlAffinity: ListTileControlAffinity.leading,
-            title: Text(txt(item['title']), style: TextStyle(fontWeight: FontWeight.w600, decoration: item['done'] == true ? TextDecoration.lineThrough : null)),
-            subtitle: Text(txt(item['detail']), style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-            onChanged: (v) => widget.store.update(item, {'done': v ?? false}),
-          ),
-        )),
-      ])),
-    ]);
-  }
-}
-
 class PracticePage extends StatelessWidget {
   const PracticePage({super.key, required this.store});
   final WorkspaceStore store;
@@ -292,7 +248,7 @@ class ResearchPage extends StatelessWidget {
     final logs = store.ofKind('log').where((e) => e['category'] == 'Research').toList()
       ..sort((a,b) => txt(b['updatedAt']).compareTo(txt(a['updatedAt'])));
     return ListView(padding: const EdgeInsets.all(16), children: [
-      const PageHeading('Research workspace', 'Manage four parallel workstreams with weekly deliverables and notes.'),
+      const PageHeading('Research workspace', 'Manage four parallel workstreams and record your research notes.'),
       ...projects.map((p) {
         final count = logs.where((e) => e['project'] == p).length;
         return Card(margin: const EdgeInsets.only(bottom: 10), child: Padding(
