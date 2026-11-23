@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/lessons.dart';
 import '../data/workspace_store.dart';
 
-const Color _accent = Color(0xFF7665D8);
+const Color _accent = Color(0xFF4F46E5);
 String _str(dynamic value) => value?.toString() ?? '';
 
 Map<String, dynamic>? _progressFor(WorkspaceStore store, Lesson lesson) {
@@ -227,7 +227,7 @@ class _LessonTile extends StatelessWidget {
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         leading: CircleAvatar(
-          backgroundColor: done ? Colors.green.shade50 : const Color(0xFFEFEAFB),
+          backgroundColor: done ? Colors.green.shade50 : const Color(0xFFEEF0FF),
           child: Icon(done ? Icons.check_circle : Icons.play_arrow_rounded,
               color: done ? Colors.green.shade700 : _accent),
         ),
@@ -433,7 +433,7 @@ class _LessonPageState extends State<LessonPage> {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFEFEAFB),
+            color: const Color(0xFFEEF0FF),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -538,7 +538,7 @@ class _LessonPageState extends State<LessonPage> {
         margin: const EdgeInsets.only(top: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFEFEAFB),
+          color: const Color(0xFFEEF0FF),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

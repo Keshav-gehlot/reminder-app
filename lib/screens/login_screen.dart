@@ -86,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF7665D8);
+    const purple = Color(0xFF4F46E5);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -181,13 +181,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEFEAFB),
+                      color: const Color(0xFFEEF0FF),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Text(
                       'Your account data is isolated with row-level database security. Use the same verified email to connect your devices.',
                       style: TextStyle(
-                          color: Color(0xFF4C426F),
+                          color: Color(0xFF3730A3),
                           fontSize: 11,
                           height: 1.45),
                     ),

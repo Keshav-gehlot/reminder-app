@@ -6,7 +6,7 @@ import '../data/lessons.dart';
 
 import '../data/workspace_store.dart';
 
-const accent = Color(0xFF7665D8);
+const accent = Color(0xFF4F46E5);
 String txt(dynamic value) => value?.toString() ?? '';
 DateTime? dateOf(dynamic value) => value is String ? DateTime.tryParse(value) : null;
 const projects = ['LeakTrace + ECDAT', 'CROSSWITNESS', 'Network Attack Forecasting', 'Bluetooth Music Middleware'];
@@ -167,7 +167,7 @@ class HomePage extends StatelessWidget {
       Container(
         padding: const EdgeInsets.all(21),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFF302A55), Color(0xFF7665D8)]),
+          gradient: const LinearGradient(colors: [Color(0xFF1E1B4B), Color(0xFF4F46E5)]),
           borderRadius: BorderRadius.circular(22),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -212,7 +212,7 @@ class HomePage extends StatelessWidget {
         child: ListTile(
           onTap: () => onOpenTab(2),
           leading: const CircleAvatar(
-              backgroundColor: Color(0xFFEFEAFB),
+              backgroundColor: Color(0xFFEEF0FF),
               child: Icon(Icons.menu_book_outlined, color: accent)),
           title: Text(nextLesson == null ? 'All study topics solved' : 'Continue learning',
               style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -450,7 +450,7 @@ class PageHeading extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF24213A))),
+      Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF1F2340))),
       const SizedBox(height: 5),
       Text(subtitle, style: TextStyle(color: Colors.grey.shade700, fontSize: 12, height: 1.4)),
     ]),
@@ -465,14 +465,14 @@ class ProgressPanel extends StatelessWidget {
     final fraction = total == 0 ? 0.0 : done / total;
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: const Color(0xFFF8F7FB), borderRadius: BorderRadius.circular(13)),
+      decoration: BoxDecoration(color: const Color(0xFFF7F8FC), borderRadius: BorderRadius.circular(13)),
       child: Column(children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
           Text(done.toString() + '/' + total.toString(), style: const TextStyle(color: accent, fontWeight: FontWeight.w800)),
         ]),
         const SizedBox(height: 8),
-        ClipRRect(borderRadius: BorderRadius.circular(20), child: LinearProgressIndicator(value: fraction, minHeight: 7, backgroundColor: const Color(0xFFEAE7F4), color: accent)),
+        ClipRRect(borderRadius: BorderRadius.circular(20), child: LinearProgressIndicator(value: fraction, minHeight: 7, backgroundColor: const Color(0xFFE4E7F5), color: accent)),
       ]),
     );
   }
@@ -536,7 +536,7 @@ class ActivityCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        CircleAvatar(backgroundColor: const Color(0xFFEDEAF9), child: Icon(icon, color: accent, size: 19)),
+        CircleAvatar(backgroundColor: const Color(0xFFEEF0FF), child: Icon(icon, color: accent, size: 19)),
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(txt(item['title']), style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -557,11 +557,11 @@ class InfoPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity, padding: const EdgeInsets.all(13),
-    decoration: BoxDecoration(color: const Color(0xFFEFEAFB), borderRadius: BorderRadius.circular(14)),
+    decoration: BoxDecoration(color: const Color(0xFFEEF0FF), borderRadius: BorderRadius.circular(14)),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Icon(Icons.info_outline, color: accent, size: 18),
       const SizedBox(width: 9),
-      Expanded(child: Text(text, style: const TextStyle(color: Color(0xFF4C426F), fontSize: 11, height: 1.4))),
+      Expanded(child: Text(text, style: const TextStyle(color: Color(0xFF3730A3), fontSize: 11, height: 1.4))),
     ]),
   );
 }

@@ -105,10 +105,14 @@ class _CyberTrackAppState extends State<CyberTrackApp>
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF6F5FA),
+        scaffoldBackgroundColor: const Color(0xFFF7F8FC),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF7665D8),
+          seedColor: const Color(0xFF4F46E5),
           brightness: Brightness.light,
+        ).copyWith(
+          primary: const Color(0xFF4F46E5),
+          secondary: const Color(0xFFF59E0B),
+          surfaceTint: Colors.transparent,
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
@@ -119,7 +123,7 @@ class _CyberTrackAppState extends State<CyberTrackApp>
         snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
         navigationBarTheme: const NavigationBarThemeData(
           backgroundColor: Colors.white,
-          indicatorColor: Color(0xFFE3DCFA),
+          indicatorColor: Color(0xFFDDE1FF),
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
@@ -127,15 +131,17 @@ class _CyberTrackAppState extends State<CyberTrackApp>
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFF6F5FA),
-          foregroundColor: Color(0xFF24213A),
+          backgroundColor: Color(0xFFF7F8FC),
+          foregroundColor: Color(0xFF1F2340),
           elevation: 0,
         ),
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 0,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: Color(0xFFE4E7F5)),
+          ),
         ),
       ),
       home: needsLogin
