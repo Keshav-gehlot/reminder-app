@@ -30,7 +30,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.44.0"
+          flutter-version: "3.50.0"
           channel: stable
           cache: true
 
@@ -75,15 +75,21 @@ jobs:
           g = gradle.read_text()
           g = g.replace('compileSdk = flutter.compileSdkVersion', 'compileSdk = 37')
           g = g.replace('minSdk = flutter.minSdkVersion', 'minSdk = 24')
-          g = g.replace('JavaVersion.VERSION_11', 'JavaVersion.VERSION_17')
           if 'isCoreLibraryDesugaringEnabled = true' not in g:
               g = g.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
           if 'coreLibraryDesugaring(' not in g:
-              if 'dependencies {' in g:
-                  g = g.replace('dependencies {', 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")', 1)
-              else:
-                  g += '\ndependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") }\n'
+              g = g.replace(
+                  'dependencies {',
+                  'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")',
+                  1,
+              )
           gradle.write_text(g)
+
+          # Flutter 3.50 generates the modern AGP 9.3 / Gradle 9.5 Android template.
+          settings = Path("android/settings.gradle.kts")
+          if settings.exists():
+              print("Using generated Flutter Android plugin DSL:")
+              print(settings.read_text())
           PY
 
       - name: Install dependencies
