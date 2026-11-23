@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,9 +17,9 @@ Future<void> main() async {
   await NotificationService.instance.initialize();
 
   SupabaseClient? client;
-  if (supabaseUrl.startsWith('https://') &&
-      supabasePublishableKey.startsWith('sb_publishable_') ||
-      supabasePublishableKey.startsWith('eyJ')) {
+  final keyConfigured = supabasePublishableKey.startsWith('sb_publishable_') ||
+      supabasePublishableKey.startsWith('eyJ');
+  if (supabaseUrl.startsWith('https://') && keyConfigured) {
     await Supabase.initialize(
       url: supabaseUrl,
       publishableKey: supabasePublishableKey,
