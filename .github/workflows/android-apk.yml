@@ -77,12 +77,10 @@ jobs:
           g = g.replace('minSdk = flutter.minSdkVersion', 'minSdk = 24')
           if 'isCoreLibraryDesugaringEnabled = true' not in g:
               g = g.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
-          if 'coreLibraryDesugaring(' not in g:
-              g = g.replace(
-                  'dependencies {',
-                  'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")',
-                  1,
-              )
+          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' not in g:
+              # Flutter's generated Kotlin DSL template may omit a dependencies block.
+              # Append an explicit block so AGP's desugaring configuration is never empty.
+              g += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
           gradle.write_text(g)
 
           # Flutter 3.50 generates the modern AGP 9.3 / Gradle 9.5 Android template.
