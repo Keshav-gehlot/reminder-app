@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'learning_planner_pages.dart';
 
 import '../data/workspace_store.dart';
 
@@ -32,7 +33,8 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final views = [
       HomePage(store: widget.store),
-      PlannerPage(store: widget.store),
+      CustomTimetablePage(store: widget.store),
+      StudyPage(store: widget.store),
       PracticePage(store: widget.store),
       ReminderPage(store: widget.store),
       ResearchPage(store: widget.store),
@@ -61,19 +63,20 @@ class _AppShellState extends State<AppShell> {
         animation: widget.store,
         builder: (context, _) => IndexedStack(index: tab, children: views),
       )),
-      floatingActionButton: tab == 2 || tab == 3 ? FloatingActionButton.extended(
-        onPressed: () => tab == 2
+      floatingActionButton: tab == 3 || tab == 4 ? FloatingActionButton.extended(
+        onPressed: () => tab == 3
           ? addActivity(context, widget.store)
           : addReminder(context, widget.store),
         icon: const Icon(Icons.add),
-        label: Text(tab == 2 ? 'Log practice' : 'New reminder'),
+        label: Text(tab == 3 ? 'Log practice' : 'New reminder'),
       ) : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: tab,
         onDestinationSelected: (v) => setState(() => tab = v),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.checklist_outlined), label: 'Planner'),
+          NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Timetable'),
+          NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Study'),
           NavigationDestination(icon: Icon(Icons.flag_outlined), label: 'Practice'),
           NavigationDestination(icon: Icon(Icons.notifications_active_outlined), label: 'Reminders'),
           NavigationDestination(icon: Icon(Icons.science_outlined), label: 'Research'),
