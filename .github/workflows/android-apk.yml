@@ -50,6 +50,12 @@ jobs:
 
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           text = manifest.read_text()
+          if 'android.permission.INTERNET' not in text:
+              text = text.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.INTERNET"/>\n    <application',
+                  1,
+              )
           if 'android.permission.RECEIVE_BOOT_COMPLETED' not in text:
               text = text.replace(
                   '<application',

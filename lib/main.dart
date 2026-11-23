@@ -8,37 +8,89 @@ import 'data/workspace_store.dart';
 import 'screens/app_shell.dart';
 import 'screens/login_screen.dart';
 import 'services/notification_service.dart';
+import 'theme.dart';
 
 const prefsUrlKey = 'cybertrack_supabase_url';
 const prefsKeyKey = 'cybertrack_supabase_key';
+const prefsSkipLoginKey = 'cybertrack_skip_login';
+
+/// Default project for CyberTrack. The publishable key is entered once in the
+/// app (or supplied at build time); the URL is prefilled for convenience.
+const defaultSupabaseUrl = 'https://yfoqqokapqlvqibifizp.supabase.co';
+
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-const supabasePublishableKey =
-    String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+const supabasePublishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.instance.initialize();
+  runApp(const Root());
+}
 
-  // Build-time values win; otherwise use values saved from inside the app.
-  final prefs = await SharedPreferences.getInstance();
-  final url = supabaseUrl.isNotEmpty
-      ? supabaseUrl
-      : (prefs.getString(prefsUrlKey) ?? '');
-  final key = supabasePublishableKey.isNotEmpty
-      ? supabasePublishableKey
-      : (prefs.getString(prefsKeyKey) ?? '');
+class _Boot {
+  _Boot(this.store, this.client, this.skipLogin);
+  final WorkspaceStore store;
+  final SupabaseClient? client;
+  final bool skipLogin;
+}
 
-  SupabaseClient? client;
-  final keyConfigured =
-      key.startsWith('sb_publishable_') || key.startsWith('eyJ');
-  if (url.startsWith('https://') && keyConfigured) {
-    await Supabase.initialize(url: url, publishableKey: key);
-    client = Supabase.instance.client;
+/// Loads configuration and can reload it in place (e.g. after the user
+/// connects cloud sync), so no app restart is needed.
+class Root extends StatefulWidget {
+  const Root({super.key});
+  @override
+  State<Root> createState() => _RootState();
+}
+
+class _RootState extends State<Root> {
+  static bool _supabaseReady = false;
+  late Future<_Boot> boot = _load();
+
+  Future<_Boot> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final url = supabaseUrl.isNotEmpty ? supabaseUrl : (prefs.getString(prefsUrlKey) ?? '');
+    final key = supabasePublishableKey.isNotEmpty ? supabasePublishableKey : (prefs.getString(prefsKeyKey) ?? '');
+    SupabaseClient? client;
+    final keyOk = key.startsWith('sb_publishable_') || key.startsWith('eyJ');
+    if (url.startsWith('https://') && keyOk) {
+      try {
+        if (!_supabaseReady) {
+          await Supabase.initialize(url: url, publishableKey: key);
+          _supabaseReady = true;
+        }
+        client = Supabase.instance.client;
+      } catch (e) {
+        debugPrint('Supabase init failed: $e');
+      }
+    }
+    final store = WorkspaceStore(client);
+    await store.initialize();
+    return _Boot(store, client, prefs.getBool(prefsSkipLoginKey) ?? false);
   }
 
-  final store = WorkspaceStore(client);
-  await store.initialize();
-  runApp(CyberTrackApp(store: store, client: client));
+  void reload() => setState(() => boot = _load());
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<_Boot>(
+        future: boot,
+        builder: (context, snap) {
+          if (!snap.hasData) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: buildTheme(),
+              home: const Scaffold(body: Center(child: CircularProgressIndicator())),
+            );
+          }
+          final b = snap.data!;
+          return CyberTrackApp(
+            key: ObjectKey(b),
+            store: b.store,
+            client: b.client,
+            skipLogin: b.skipLogin,
+            onReload: reload,
+          );
+        },
+      );
 }
 
 class CyberTrackApp extends StatefulWidget {
@@ -46,18 +98,22 @@ class CyberTrackApp extends StatefulWidget {
     super.key,
     required this.store,
     required this.client,
+    required this.skipLogin,
+    required this.onReload,
   });
 
   final WorkspaceStore store;
   final SupabaseClient? client;
+  final bool skipLogin;
+  final VoidCallback onReload;
 
   @override
   State<CyberTrackApp> createState() => _CyberTrackAppState();
 }
 
-class _CyberTrackAppState extends State<CyberTrackApp>
-    with WidgetsBindingObserver {
+class _CyberTrackAppState extends State<CyberTrackApp> with WidgetsBindingObserver {
   StreamSubscription<AuthState>? _authSubscription;
+  late bool skipLogin = widget.skipLogin;
 
   @override
   void initState() {
@@ -82,9 +138,7 @@ class _CyberTrackAppState extends State<CyberTrackApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      unawaited(widget.store.syncNow());
-    }
+    if (state == AppLifecycleState.resumed) unawaited(widget.store.syncNow());
   }
 
   @override
@@ -95,58 +149,32 @@ class _CyberTrackAppState extends State<CyberTrackApp>
     super.dispose();
   }
 
+  Future<void> setSkip(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(prefsSkipLoginKey, value);
+    if (mounted) setState(() => skipLogin = value);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final needsLogin =
-        widget.client != null && widget.client!.auth.currentSession == null;
-
+    final signedIn = widget.client?.auth.currentSession != null;
+    final showAuth = !signedIn && !skipLogin;
     return MaterialApp(
       title: 'CyberTrack 12',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF7F8FC),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4F46E5),
-          brightness: Brightness.light,
-        ).copyWith(
-          primary: const Color(0xFF4F46E5),
-          secondary: const Color(0xFFF59E0B),
-          surfaceTint: Colors.transparent,
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-        ),
-        snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
-        navigationBarTheme: const NavigationBarThemeData(
-          backgroundColor: Colors.white,
-          indicatorColor: Color(0xFFDDE1FF),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-              minimumSize: const Size(64, 48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFF7F8FC),
-          foregroundColor: Color(0xFF1F2340),
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: const BorderSide(color: Color(0xFFE4E7F5)),
-          ),
-        ),
-      ),
-      home: needsLogin
-          ? LoginScreen(client: widget.client!)
-          : AppShell(store: widget.store, client: widget.client),
+      theme: buildTheme(),
+      home: showAuth
+          ? LoginScreen(
+              client: widget.client,
+              onConnected: widget.onReload,
+              onSkip: () => setSkip(true),
+            )
+          : AppShell(
+              store: widget.store,
+              client: widget.client,
+              onSignedOut: () => setSkip(false),
+              onReload: widget.onReload,
+            ),
     );
   }
 }

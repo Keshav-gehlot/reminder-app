@@ -21,67 +21,72 @@ String projectInfo(String p) {
 }
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, required this.store, required this.client});
+  const AppShell({super.key, required this.store, required this.client, required this.onSignedOut, required this.onReload});
   final WorkspaceStore store;
   final SupabaseClient? client;
+  final VoidCallback onSignedOut;
+  final VoidCallback onReload;
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends State<AppShell> {
   int tab = 0;
+  static const titles = ['CyberTrack', 'Study', 'Plan', 'Track'];
 
   @override
   Widget build(BuildContext context) {
     final views = [
       HomePage(store: widget.store, onOpenTab: (i) => setState(() => tab = i)),
-      CustomTimetablePage(store: widget.store),
       StudyPage(store: widget.store),
-      PracticePage(store: widget.store),
-      ReminderPage(store: widget.store),
-      ResearchPage(store: widget.store),
+      _TabbedSection(tabs: const ['Timetable', 'Reminders'], children: [
+        CustomTimetablePage(store: widget.store),
+        ReminderPage(store: widget.store),
+      ]),
+      _TabbedSection(tabs: const ['Practice log', 'Research'], children: [
+        PracticePage(store: widget.store),
+        ResearchPage(store: widget.store),
+      ]),
     ];
     return Scaffold(
       appBar: AppBar(
-        title: const Row(children: [
-          Icon(Icons.track_changes, color: accent, size: 28),
-          SizedBox(width: 9),
-          Text('CyberTrack 12', style: TextStyle(fontWeight: FontWeight.w800)),
-        ]),
+        title: Text(titles[tab]),
         actions: [
           AnimatedBuilder(
             animation: widget.store,
-            builder: (context, _) => IconButton(
-              onPressed: accountSheet,
-              tooltip: 'Account and sync',
-              icon: Icon(widget.store.syncing ? Icons.sync :
-                (widget.store.cloudConfigured && widget.store.syncError == null
-                  ? Icons.cloud_done : Icons.cloud_off), color: accent),
-            ),
+            builder: (context, _) {
+              final signedIn = widget.client?.auth.currentSession != null;
+              final email = widget.client?.auth.currentUser?.email ?? '';
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  onPressed: accountSheet,
+                  tooltip: 'Account and sync',
+                  icon: CircleAvatar(
+                    radius: 17,
+                    backgroundColor: signedIn ? accent : const Color(0xFFE3E6F0),
+                    child: signedIn && email.isNotEmpty
+                        ? Text(email[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))
+                        : const Icon(Icons.person_outline, size: 20, color: Color(0xFF6B7085)),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
-      body: SafeArea(child: AnimatedBuilder(
+      body: AnimatedBuilder(
         animation: widget.store,
         builder: (context, _) => IndexedStack(index: tab, children: views),
-      )),
-      floatingActionButton: tab == 3 || tab == 4 ? FloatingActionButton.extended(
-        onPressed: () => tab == 3
-          ? addActivity(context, widget.store)
-          : addReminder(context, widget.store),
-        icon: const Icon(Icons.add),
-        label: Text(tab == 3 ? 'Log practice' : 'New reminder'),
-      ) : null,
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: tab,
         onDestinationSelected: (v) => setState(() => tab = v),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Timetable'),
-          NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Study'),
-          NavigationDestination(icon: Icon(Icons.flag_outlined), label: 'Practice'),
-          NavigationDestination(icon: Icon(Icons.notifications_active_outlined), label: 'Reminders'),
-          NavigationDestination(icon: Icon(Icons.science_outlined), label: 'Research'),
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.school_outlined), selectedIcon: Icon(Icons.school), label: 'Study'),
+          NavigationDestination(icon: Icon(Icons.event_note_outlined), selectedIcon: Icon(Icons.event_note), label: 'Plan'),
+          NavigationDestination(icon: Icon(Icons.insights_outlined), selectedIcon: Icon(Icons.insights), label: 'Track'),
         ],
       ),
     );
@@ -119,19 +124,30 @@ class _AppShellState extends State<AppShell> {
                 icon: const Icon(Icons.sync), label: const Text('Sync now'),
               )),
               TextButton.icon(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(ctx);
-                  Navigator.of(context).push(MaterialPageRoute(
+                  final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(
                       builder: (_) => const SyncSetupScreen()));
+                  if (saved == true) widget.onReload();
                 },
                 icon: const Icon(Icons.cloud_outlined),
                 label: const Text('Cloud sync setup'),
               ),
+              if (widget.client?.auth.currentSession == null)
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    widget.onSignedOut();
+                  },
+                  icon: const Icon(Icons.login),
+                  label: const Text('Sign in'),
+                ),
               if (widget.client?.auth.currentSession != null)
                 TextButton.icon(
                   onPressed: () async {
                     await widget.client!.auth.signOut();
                     if (ctx.mounted) Navigator.pop(ctx);
+                    widget.onSignedOut();
                   },
                   icon: const Icon(Icons.logout), label: const Text('Sign out'),
                 ),
@@ -199,9 +215,9 @@ class HomePage extends StatelessWidget {
                 Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(step, style: const TextStyle(height: 1.4))),
               const SizedBox(height: 6),
               Row(children: [
-                Expanded(child: FilledButton(onPressed: () => onOpenTab(2), child: const Text('Start learning'))),
+                Expanded(child: FilledButton(onPressed: () => onOpenTab(1), child: const Text('Start learning'))),
                 const SizedBox(width: 8),
-                Expanded(child: OutlinedButton(onPressed: () => onOpenTab(1), child: const Text('Plan my week'))),
+                Expanded(child: OutlinedButton(onPressed: () => onOpenTab(2), child: const Text('Plan my week'))),
               ]),
             ]),
           ),
@@ -210,7 +226,7 @@ class HomePage extends StatelessWidget {
       ],
       Card(
         child: ListTile(
-          onTap: () => onOpenTab(2),
+          onTap: () => onOpenTab(1),
           leading: const CircleAvatar(
               backgroundColor: Color(0xFFEEF0FF),
               child: Icon(Icons.menu_book_outlined, color: accent)),
@@ -574,4 +590,19 @@ class EmptyPanel extends StatelessWidget {
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
     child: Text(text, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
   );
+}
+
+
+class _TabbedSection extends StatelessWidget {
+  const _TabbedSection({required this.tabs, required this.children});
+  final List<String> tabs;
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) => DefaultTabController(
+        length: tabs.length,
+        child: Column(children: [
+          TabBar(tabs: [for (final t in tabs) Tab(text: t)]),
+          Expanded(child: TabBarView(children: children)),
+        ]),
+      );
 }

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import '../data/lessons.dart';
 import '../data/workspace_store.dart';
+import '../theme.dart';
+import '../widgets/notes_view.dart';
 
-const Color _accent = Color(0xFF4F46E5);
+const Color _accent = AppColors.primary;
 String _str(dynamic value) => value?.toString() ?? '';
 
 Map<String, dynamic>? _progressFor(WorkspaceStore store, Lesson lesson) {
@@ -15,8 +18,14 @@ Map<String, dynamic>? _progressFor(WorkspaceStore store, Lesson lesson) {
   return null;
 }
 
-Future<void> _saveProgress(
-    WorkspaceStore store, Lesson lesson, Map<String, dynamic> changes) {
+bool _isDone(WorkspaceStore store, Lesson l) => _progressFor(store, l)?['done'] == true;
+
+bool _needsReview(WorkspaceStore store, Lesson lesson) {
+  final progress = _progressFor(store, lesson);
+  return progress != null && progress['confidence'] == 'review';
+}
+
+Future<void> _saveProgress(WorkspaceStore store, Lesson lesson, Map<String, dynamic> changes) {
   final current = _progressFor(store, lesson) ?? <String, dynamic>{};
   return store.upsert({
     ...current,
@@ -28,26 +37,9 @@ Future<void> _saveProgress(
   });
 }
 
-Color _levelColor(String level) {
-  switch (level) {
-    case 'Advanced':
-      return Colors.red.shade400;
-    case 'Intermediate':
-      return Colors.orange.shade700;
-    default:
-      return Colors.green.shade600;
-  }
-}
+int _levelRank(String level) => level == 'Beginner' ? 0 : (level == 'Intermediate' ? 1 : 2);
 
-bool _needsReview(WorkspaceStore store, Lesson lesson) {
-  final progress = _progressFor(store, lesson);
-  return progress != null && progress['confidence'] == 'review';
-}
-
-int _levelRank(String level) =>
-    level == 'Beginner' ? 0 : (level == 'Intermediate' ? 1 : 2);
-
-int _streak(WorkspaceStore store) {
+int studyStreak(WorkspaceStore store) {
   final days = <DateTime>{};
   for (final e in store.ofKind('lesson')) {
     if (e['done'] == true) {
@@ -66,6 +58,14 @@ int _streak(WorkspaceStore store) {
   return count;
 }
 
+List<Lesson> _ordered(String area) => lessons.where((l) => l.area == area).toList()
+  ..sort((a, b) {
+    final c = _levelRank(a.level).compareTo(_levelRank(b.level));
+    return c != 0 ? c : lessons.indexOf(a).compareTo(lessons.indexOf(b));
+  });
+
+// ─────────────────────────────── Study list ───────────────────────────────
+
 class StudyPage extends StatefulWidget {
   const StudyPage({super.key, required this.store});
   final WorkspaceStore store;
@@ -74,209 +74,209 @@ class StudyPage extends StatefulWidget {
 }
 
 class _StudyPageState extends State<StudyPage> {
-  String area = 'CTF', level = 'All', query = '';
+  String area = 'DSA', filter = 'All', query = '';
+
+  void open(Lesson l) => Navigator.of(context)
+      .push(MaterialPageRoute(builder: (_) => LessonPage(lesson: l, store: widget.store)));
 
   @override
   Widget build(BuildContext context) {
     final store = widget.store;
-    final inArea = lessons.where((t) => t.area == area).toList();
-    final solved =
-        inArea.where((t) => _progressFor(store, t)?['done'] == true).length;
+    final all = _ordered(area);
+    final solved = all.where((l) => _isDone(store, l)).length;
+    final upNext = all.where((l) => !_isDone(store, l)).firstOrNull;
     final q = query.trim().toLowerCase();
-    final list = inArea
-        .where((t) {
-          if (level == 'All') return true;
-          if (level == 'To review') return _needsReview(store, t);
-          return t.level == level;
-        })
-        .where((t) =>
-            q.isEmpty ||
-            t.title.toLowerCase().contains(q) ||
-            t.question.toLowerCase().contains(q))
-        .toList();
-    list.sort((a, b) {
-      final c = _levelRank(a.level).compareTo(_levelRank(b.level));
-      return c != 0 ? c : lessons.indexOf(a).compareTo(lessons.indexOf(b));
-    });
-    final fraction = inArea.isEmpty ? 0.0 : solved / inArea.length;
-    final ordered = [...inArea]..sort((a, b) {
-        final c = _levelRank(a.level).compareTo(_levelRank(b.level));
-        return c != 0 ? c : lessons.indexOf(a).compareTo(lessons.indexOf(b));
-      });
-    final upNext = ordered
-        .where((t) => _progressFor(store, t)?['done'] != true)
-        .firstOrNull;
-    final streak = _streak(store);
-    final reviewCount = inArea.where((t) => _needsReview(store, t)).length;
+    final list = all.where((t) {
+      if (filter == 'To review' && !_needsReview(store, t)) return false;
+      if (filter != 'All' && filter != 'To review' && t.level != filter) return false;
+      return q.isEmpty || t.title.toLowerCase().contains(q) || t.summary.toLowerCase().contains(q);
+    }).toList();
 
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 28), children: [
-      const Text('Study',
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-      const SizedBox(height: 2),
-      Text('Try the question, reveal hints one at a time, then read the notes or watch a video.',
-          style: TextStyle(color: Colors.grey.shade700, height: 1.4)),
-      const SizedBox(height: 14),
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
       SegmentedButton<String>(
+        style: SegmentedButton.styleFrom(minimumSize: const Size(0, 46)),
         segments: const [
-          ButtonSegment(value: 'CTF', label: Text('CTF'), icon: Icon(Icons.security)),
           ButtonSegment(value: 'DSA', label: Text('DSA'), icon: Icon(Icons.code)),
+          ButtonSegment(value: 'CTF', label: Text('CTF'), icon: Icon(Icons.security)),
         ],
         selected: {area},
-        onSelectionChanged: (v) => setState(() => area = v.first),
+        onSelectionChanged: (v) => setState(() {
+          area = v.first;
+          filter = 'All';
+        }),
       ),
       const SizedBox(height: 14),
-      Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Expanded(
-                child: Text('$area progress',
-                    style: const TextStyle(fontWeight: FontWeight.w800)),
-              ),
-              Text('$solved of ${inArea.length} solved',
-                  style: const TextStyle(fontWeight: FontWeight.w700, color: _accent)),
-            ]),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(value: fraction, minHeight: 9),
-            ),
-          ]),
-        ),
-      ),
-      const SizedBox(height: 10),
-      Row(children: [
-        Expanded(child: _StatBox(Icons.local_fire_department, Colors.orange.shade700,
-            streak.toString(), streak == 1 ? 'day streak' : 'day streak')),
-        const SizedBox(width: 8),
-        Expanded(child: _StatBox(Icons.check_circle, Colors.green.shade700,
-            solved.toString(), 'solved')),
-        const SizedBox(width: 8),
-        Expanded(child: _StatBox(Icons.flag, _accent, reviewCount.toString(), 'to review')),
-      ]),
-      const SizedBox(height: 4),
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(
-          solved == 0
-              ? 'Start with the first topic. Beginner topics come first, then it gets harder.'
-              : streak > 1
-                  ? 'You are on a $streak-day streak. Keep it going with one topic today.'
-                  : 'Nice progress. One small topic a day builds up fast.',
-          style: TextStyle(color: Colors.grey.shade700, height: 1.4),
-        ),
-      ),
+      if (upNext != null) _UpNextCard(lesson: upNext, solved: solved, total: all.length, onTap: () => open(upNext))
+      else _AllDoneCard(total: all.length),
+      const SizedBox(height: 16),
       TextField(
-        decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search), hintText: 'Search topics'),
+        decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search topics'),
         onChanged: (v) => setState(() => query = v),
       ),
       const SizedBox(height: 10),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(children: [
-          for (final l in const ['All', 'Beginner', 'Intermediate', 'Advanced', 'To review'])
+          for (final f in const ['All', 'Beginner', 'Intermediate', 'Advanced', 'To review'])
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(l),
-                selected: level == l,
-                onSelected: (_) => setState(() => level = l),
-              ),
+              child: ChoiceChip(label: Text(f), selected: filter == f, onSelected: (_) => setState(() => filter = f)),
             ),
         ]),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: 6),
       if (list.isEmpty)
         const Padding(
-          padding: EdgeInsets.all(28),
-          child: Text('No matching topic. Try another keyword or level.',
-              textAlign: TextAlign.center),
+          padding: EdgeInsets.all(32),
+          child: Text('Nothing matches. Try another word or filter.', textAlign: TextAlign.center),
         )
       else
-        ...list.map((t) => _LessonTile(
-              lesson: t,
-              upNext: identical(t, upNext),
-              progress: _progressFor(store, t),
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => LessonPage(lesson: t, store: store))),
-            )),
-      const SizedBox(height: 8),
-      Text(
-          'Everything here works offline. Your progress and answers sync with your account.',
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+        for (var i = 0; i < list.length; i++)
+          _TopicRow(
+            index: all.indexOf(list[i]) + 1,
+            lesson: list[i],
+            done: _isDone(store, list[i]),
+            review: _needsReview(store, list[i]),
+            isNext: identical(list[i], upNext),
+            onTap: () => open(list[i]),
+          ),
     ]);
   }
 }
 
-class _LessonTile extends StatelessWidget {
-  const _LessonTile({required this.lesson, required this.progress, required this.onTap, this.upNext = false});
+class _UpNextCard extends StatelessWidget {
+  const _UpNextCard({required this.lesson, required this.solved, required this.total, required this.onTap});
   final Lesson lesson;
-  final bool upNext;
-  final Map<String, dynamic>? progress;
+  final int solved, total;
   final VoidCallback onTap;
-
   @override
-  Widget build(BuildContext context) {
-    final done = progress?['done'] == true;
-    final hintsUsed = (progress?['hints'] as num?)?.toInt() ?? 0;
-    return Card(
-      margin: const EdgeInsets.only(top: 8),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        leading: CircleAvatar(
-          backgroundColor: done ? Colors.green.shade50 : const Color(0xFFEEF0FF),
-          child: Icon(done ? Icons.check_circle : Icons.play_arrow_rounded,
-              color: done ? Colors.green.shade700 : _accent),
-        ),
-        title: Text(lesson.title,
-            style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Row(children: [
-            Icon(Icons.circle, size: 9, color: _levelColor(lesson.level)),
-            const SizedBox(width: 5),
-            Text(lesson.level),
-            const SizedBox(width: 12),
-            Text('Hints $hintsUsed/${lesson.hints.length}'),
-            if (upNext) ...[
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: _accent, borderRadius: BorderRadius.circular(10)),
-                child: const Text('Up next', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+  Widget build(BuildContext context) => Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Ink(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [AppColors.primaryDark, AppColors.primary]),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Text('UP NEXT', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                const Spacer(),
+                Text('$solved / $total done', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
+              ]),
+              const SizedBox(height: 8),
+              Text(lesson.title, style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(lesson.summary, style: const TextStyle(color: Colors.white70, height: 1.4)),
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: total == 0 ? 0 : solved / total,
+                  minHeight: 6,
+                  backgroundColor: Colors.white24,
+                  color: Colors.white,
+                ),
               ),
-            ],
-          ]),
-        ),
-        trailing: progress?['confidence'] == 'review'
-            ? Icon(Icons.flag, color: Colors.orange.shade700)
-            : const Icon(Icons.chevron_right),
-      ),
-    );
-  }
-}
-
-class _StatBox extends StatelessWidget {
-  const _StatBox(this.icon, this.color, this.value, this.label);
-  final IconData icon;
-  final Color color;
-  final String value, label;
-  @override
-  Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 4),
-            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-            Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
-          ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                const Icon(Icons.play_circle_fill, color: Colors.white),
+                const SizedBox(width: 8),
+                Text('Start · ${lesson.minutes} min', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+              ]),
+            ]),
+          ),
         ),
       );
 }
+
+class _AllDoneCard extends StatelessWidget {
+  const _AllDoneCard({required this.total});
+  final int total;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(color: AppColors.successSoft, borderRadius: BorderRadius.circular(20)),
+        child: Row(children: [
+          const Icon(Icons.emoji_events, color: AppColors.success, size: 32),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('All $total topics solved. Revisit anything flagged "To review".',
+                style: const TextStyle(fontWeight: FontWeight.w700, height: 1.4)),
+          ),
+        ]),
+      );
+}
+
+class _TopicRow extends StatelessWidget {
+  const _TopicRow({required this.index, required this.lesson, required this.done, required this.review, required this.isNext, required this.onTap});
+  final int index;
+  final Lesson lesson;
+  final bool done, review, isNext;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: isNext ? AppColors.primary : AppColors.line, width: isNext ? 1.5 : 1),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: done ? AppColors.successSoft : AppColors.primarySoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: done
+                      ? const Icon(Icons.check_rounded, color: AppColors.success)
+                      : Text('$index', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(lesson.title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 3),
+                    Text(lesson.summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      Icon(Icons.circle, size: 8, color: levelColor(lesson.level)),
+                      const SizedBox(width: 5),
+                      Text(lesson.level, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 12),
+                      const Icon(Icons.schedule, size: 13, color: AppColors.muted),
+                      const SizedBox(width: 3),
+                      Text('${lesson.minutes} min', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                      if (lesson.practice.isNotEmpty) ...[
+                        const SizedBox(width: 12),
+                        const Icon(Icons.science_outlined, size: 13, color: AppColors.muted),
+                        const SizedBox(width: 3),
+                        Text('${lesson.practice.length} labs', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                      ],
+                    ]),
+                  ]),
+                ),
+                if (review) const Icon(Icons.flag, color: AppColors.accent)
+                else const Icon(Icons.chevron_right, color: AppColors.muted),
+              ]),
+            ),
+          ),
+        ),
+      );
+}
+
+// ─────────────────────────────── Lesson page ───────────────────────────────
 
 class LessonPage extends StatefulWidget {
   const LessonPage({super.key, required this.lesson, required this.store});
@@ -293,8 +293,7 @@ class _LessonPageState extends State<LessonPage> {
   @override
   void initState() {
     super.initState();
-    answer = TextEditingController(
-        text: _str(_progressFor(widget.store, widget.lesson)?['answer']));
+    answer = TextEditingController(text: _str(_progressFor(widget.store, widget.lesson)?['answer']));
   }
 
   @override
@@ -308,15 +307,14 @@ class _LessonPageState extends State<LessonPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  Future<void> askGpt() async {
+  Future<void> askTutor() async {
     final t = widget.lesson;
     final attempt = answer.text.trim();
-    final prompt = 'Act as a patient ' +
-        (t.area == 'CTF' ? 'cybersecurity CTF' : 'DSA') +
-        ' tutor. Topic: ' + t.title +
-        '. Question: ' + t.question +
-        (attempt.isEmpty ? '' : ' My attempt so far: ' + attempt) +
-        ' Give one hint at a time and do not reveal the full solution until I ask. Then explain the concept, approach, edge cases, and complexity.';
+    final prompt = 'Act as a patient ${t.area == 'CTF' ? 'cybersecurity CTF' : 'DSA'} tutor. '
+        'Topic: ${t.title}. Question: ${t.question}'
+        '${attempt.isEmpty ? '' : ' My attempt so far: $attempt'} '
+        'Give one hint at a time and do not reveal the full solution until I ask. '
+        'Then explain the concept, approach, edge cases and complexity.';
     await Clipboard.setData(ClipboardData(text: prompt));
     toast('Tutor prompt copied. Paste it into ChatGPT or Claude.');
   }
@@ -336,26 +334,18 @@ class _LessonPageState extends State<LessonPage> {
             padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text('Great work! How did that feel?',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              child: Text('Nice work! How confident are you?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.sentiment_very_satisfied),
-            title: const Text('Easy, I got it'),
-            onTap: () => Navigator.pop(ctx, 'easy'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.sentiment_satisfied),
-            title: const Text('Okay, with a few hints'),
-            onTap: () => Navigator.pop(ctx, 'ok'),
-          ),
+          ListTile(leading: const Icon(Icons.sentiment_very_satisfied), title: const Text('Confident, I got it'), onTap: () => Navigator.pop(ctx, 'easy')),
+          ListTile(leading: const Icon(Icons.sentiment_satisfied), title: const Text('Okay, with a few hints'), onTap: () => Navigator.pop(ctx, 'ok')),
           ListTile(
             leading: const Icon(Icons.flag_outlined),
-            title: const Text('Need to review this again'),
-            subtitle: const Text('Adds it to your To review list'),
+            title: const Text('Review this again later'),
+            subtitle: const Text('Adds it to your "To review" list'),
             onTap: () => Navigator.pop(ctx, 'review'),
           ),
+          const SizedBox(height: 8),
         ]),
       ),
     );
@@ -366,105 +356,179 @@ class _LessonPageState extends State<LessonPage> {
       'confidence': choice,
       'answer': answer.text,
     });
-    final total = lessons.where((l) => l.area == t.area).length;
-    final solved = lessons
-        .where((l) => l.area == t.area && _progressFor(widget.store, l)?['done'] == true)
-        .length;
-    toast('Solved! $solved of $total ${t.area} topics done.');
-  }
-
-  Future<void> openVideo() async {
-    final uri = Uri.parse('https://www.youtube.com/results?search_query=' +
-        Uri.encodeComponent(widget.lesson.videoQuery));
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok) toast('Could not open the video link.');
+    if (!mounted) return;
+    final next = _ordered(t.area).where((l) => !_isDone(widget.store, l)).firstOrNull;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.celebration, color: AppColors.accent, size: 36),
+        title: const Text('Topic complete'),
+        content: Text(next == null ? 'You have finished every ${t.area} topic.' : 'Up next: ${next.title}'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Stay here')),
+          if (next != null)
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => LessonPage(lesson: next, store: widget.store)));
+              },
+              child: const Text('Next topic'),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final t = widget.lesson;
+    final hasLabs = t.practice.isNotEmpty || t.exam.isNotEmpty;
     return DefaultTabController(
-      length: 2,
+      length: hasLabs ? 3 : 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(t.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-          bottom: const TabBar(tabs: [
-            Tab(icon: Icon(Icons.lightbulb_outline), text: 'Practice'),
-            Tab(icon: Icon(Icons.menu_book_outlined), text: 'Notes & video'),
+          title: Text(t.title),
+          bottom: TabBar(tabs: [
+            const Tab(text: 'Learn'),
+            const Tab(text: 'Practice'),
+            if (hasLabs) const Tab(text: 'Labs & exams'),
           ]),
         ),
         body: AnimatedBuilder(
           animation: widget.store,
           builder: (context, _) => TabBarView(children: [
-            practiceTab(context),
-            notesTab(context),
+            _KeepAlive(child: learnTab()),
+            practiceTab(),
+            if (hasLabs) labsTab(),
           ]),
         ),
       ),
     );
   }
 
-  Widget practiceTab(BuildContext context) {
+  Widget learnTab() {
+    final t = widget.lesson;
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
+      LessonVideo(videoId: t.videoId, title: t.videoTitle),
+      const SizedBox(height: 18),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        _Pill(icon: Icons.circle, iconColor: levelColor(t.level), label: t.level),
+        _Pill(icon: Icons.schedule, label: '${t.minutes} min'),
+        _Pill(icon: Icons.speed, label: t.complexity.split('·').first.trim()),
+      ]),
+      const SizedBox(height: 16),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(16)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Key points', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          const SizedBox(height: 8),
+          for (final k in t.keyPoints)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.check_circle, size: 18, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Expanded(child: Text(k, style: const TextStyle(height: 1.4))),
+              ]),
+            ),
+        ]),
+      ),
+      const SizedBox(height: 6),
+      Row(children: [
+        const Text('Notes', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+        const Spacer(),
+        IconButton(
+          tooltip: 'Smaller text',
+          onPressed: noteSize > 13 ? () => setState(() => noteSize--) : null,
+          icon: const Icon(Icons.text_decrease),
+        ),
+        IconButton(
+          tooltip: 'Larger text',
+          onPressed: noteSize < 22 ? () => setState(() => noteSize++) : null,
+          icon: const Icon(Icons.text_increase),
+        ),
+      ]),
+      NotesView(markup: t.notes, fontSize: noteSize),
+      const SizedBox(height: 12),
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          const Icon(Icons.speed, color: AppColors.primary),
+          const SizedBox(width: 10),
+          Expanded(child: Text(t.complexity, style: const TextStyle(fontWeight: FontWeight.w700))),
+        ]),
+      ),
+      const SizedBox(height: 20),
+      Builder(
+        builder: (ctx) => FilledButton.icon(
+          onPressed: () => DefaultTabController.of(ctx).animateTo(1),
+          icon: const Icon(Icons.edit_note),
+          label: const Text('Try the practice question'),
+        ),
+      ),
+    ]);
+  }
+
+  Widget practiceTab() {
     final t = widget.lesson;
     final progress = _progressFor(widget.store, t);
     final done = progress?['done'] == true;
     final shown = ((progress?['hints'] as num?)?.toInt() ?? 0).clamp(0, t.hints.length);
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 28), children: [
-      Wrap(spacing: 8, children: [
-        Chip(label: Text(t.area), avatar: Icon(t.area == 'CTF' ? Icons.security : Icons.code, size: 16)),
-        Chip(label: Text(t.level), avatar: Icon(Icons.circle, size: 10, color: _levelColor(t.level))),
-        if (done) Chip(label: const Text('Solved'), avatar: Icon(Icons.check_circle, size: 16, color: Colors.green.shade700)),
+    const labels = ['Gentle nudge', 'Bigger hint', 'Almost there'];
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(16)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.help_outline, color: AppColors.primary),
+            const SizedBox(width: 8),
+            const Text('Question', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            const Spacer(),
+            if (done) const _Pill(icon: Icons.check_circle, iconColor: AppColors.success, label: 'Solved'),
+          ]),
+          const SizedBox(height: 10),
+          SelectableText(t.question, style: const TextStyle(height: 1.55, fontSize: 16)),
+        ]),
+      ),
+      const SizedBox(height: 20),
+      Row(children: [
+        const Text('Hints', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        const Spacer(),
+        Text('$shown of ${t.hints.length}', style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
       ]),
       const SizedBox(height: 8),
-      const Text('Question', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-      const SizedBox(height: 6),
-      SelectableText(t.question, style: const TextStyle(height: 1.5, fontSize: 15)),
-      const SizedBox(height: 18),
-      Row(children: [
-        const Expanded(
-          child: Text('Hints', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        ),
-        Text('$shown / ${t.hints.length} revealed', style: TextStyle(color: Colors.grey.shade700)),
-      ]),
-      const SizedBox(height: 6),
       for (var i = 0; i < shown; i++)
         Container(
-          width: double.infinity,
           margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEEF0FF),
-            borderRadius: BorderRadius.circular(12),
-          ),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(14)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(i < 3 ? const ['Gentle nudge', 'Bigger hint', 'Almost there'][i] : 'Hint ${i + 1}',
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: _accent)),
-            const SizedBox(height: 3),
-            Text(t.hints[i], style: const TextStyle(height: 1.45, fontSize: 15)),
+            Text(i < labels.length ? labels[i] : 'Hint ${i + 1}',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.warning)),
+            const SizedBox(height: 4),
+            Text(t.hints[i], style: const TextStyle(height: 1.5, fontSize: 15)),
           ]),
         ),
-      OutlinedButton.icon(
-        onPressed: shown < t.hints.length
-            ? () => _saveProgress(widget.store, t, {'hints': shown + 1})
-            : null,
-        icon: const Icon(Icons.lightbulb_outline),
-        label: Text(shown == 0
-            ? 'Stuck? Reveal a gentle nudge'
-            : shown < t.hints.length
-                ? 'Reveal next hint'
-                : 'All hints revealed'),
-      ),
-      const SizedBox(height: 18),
+      if (shown < t.hints.length)
+        OutlinedButton.icon(
+          onPressed: () => _saveProgress(widget.store, t, {'hints': shown + 1}),
+          icon: const Icon(Icons.lightbulb_outline),
+          label: Text(shown == 0 ? 'Stuck? Show a gentle nudge' : 'Show the next hint'),
+        ),
+      const SizedBox(height: 20),
       const Text('Your answer', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-      const SizedBox(height: 6),
+      const SizedBox(height: 8),
       TextField(
         controller: answer,
-        minLines: 4,
-        maxLines: 10,
-        decoration: const InputDecoration(
-            hintText: 'Write your approach, steps or pseudocode here…'),
+        minLines: 5,
+        maxLines: 12,
+        decoration: const InputDecoration(hintText: 'Write your approach, steps or pseudocode…'),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: 10),
       Row(children: [
         Expanded(
           child: OutlinedButton.icon(
@@ -473,112 +537,148 @@ class _LessonPageState extends State<LessonPage> {
               toast('Answer saved');
             },
             icon: const Icon(Icons.save_outlined),
-            label: const Text('Save answer'),
+            label: const Text('Save'),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
         Expanded(
-          child: OutlinedButton.icon(
-            onPressed: askGpt,
-            icon: const Icon(Icons.chat_bubble_outline),
-            label: const Text('Ask AI tutor'),
+          child: OutlinedButton.icon(onPressed: askTutor, icon: const Icon(Icons.auto_awesome), label: const Text('AI tutor')),
+        ),
+      ]),
+      const SizedBox(height: 12),
+      FilledButton.icon(
+        onPressed: () => toggleSolved(done),
+        icon: Icon(done ? Icons.undo : Icons.check),
+        label: Text(done ? 'Mark as not solved' : 'Mark as solved'),
+      ),
+    ]);
+  }
+
+  Widget labsTab() {
+    final t = widget.lesson;
+    IconData iconFor(String p) => p.startsWith('HTB') ? Icons.dns : (p == 'picoCTF' ? Icons.flag : Icons.terminal);
+    Color colorFor(String p) => p.startsWith('HTB') ? AppColors.success : (p == 'picoCTF' ? AppColors.accent : AppColors.danger);
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
+      const Text('Hands-on labs', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 4),
+      const Text('Practise this topic on real platforms. Only attack machines you are given.', style: TextStyle(color: AppColors.muted)),
+      const SizedBox(height: 12),
+      for (final p in t.practice)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              leading: CircleAvatar(backgroundColor: colorFor(p.platform).withValues(alpha: 0.12), child: Icon(iconFor(p.platform), color: colorFor(p.platform))),
+              title: Text(p.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text(p.platform),
+              trailing: const Icon(Icons.open_in_new, size: 20),
+              onTap: () => launchUrl(Uri.parse(p.url), mode: LaunchMode.externalApplication),
+            ),
           ),
         ),
-      ]),
-      const SizedBox(height: 10),
-      SizedBox(
-        width: double.infinity,
-        child: FilledButton.icon(
-          onPressed: () => toggleSolved(done),
-          icon: Icon(done ? Icons.undo : Icons.check),
-          label: Text(done ? 'Mark as not solved' : 'Mark as solved'),
-        ),
-      ),
+      if (t.exam.isNotEmpty) ...[
+        const SizedBox(height: 14),
+        const Text('Exam alignment', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        const Text('Where this topic shows up in the CEH and Check Point CCSA syllabi.', style: TextStyle(color: AppColors.muted)),
+        const SizedBox(height: 12),
+        for (final e in t.exam)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: Colors.white, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(14)),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: e.startsWith('CEH') ? AppColors.primarySoft : AppColors.accentSoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(e.startsWith('CEH') ? 'CEH' : 'CCSA',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: e.startsWith('CEH') ? AppColors.primary : AppColors.warning)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(e.split('·').last.trim(), style: const TextStyle(height: 1.4, fontWeight: FontWeight.w600))),
+            ]),
+          ),
+      ],
     ]);
   }
+}
 
-  Widget notesTab(BuildContext context) {
-    final t = widget.lesson;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 28), children: [
-      Card(
-        child: ListTile(
-          leading: const Icon(Icons.ondemand_video, color: _accent),
-          title: const Text('Watch while you read',
-              style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: const Text(
-              'Opens video results. Use Android split-screen to keep these notes beside the video.'),
-          trailing: const Icon(Icons.open_in_new),
-          onTap: openVideo,
-        ),
-      ),
-      Row(children: [
-        const Icon(Icons.text_fields, size: 18),
-        const SizedBox(width: 6),
-        const Text('Text size'),
-        const Spacer(),
-        IconButton(
-          tooltip: 'Smaller text',
-          onPressed: noteSize > 13 ? () => setState(() => noteSize -= 1) : null,
-          icon: const Icon(Icons.remove_circle_outline),
-        ),
-        IconButton(
-          tooltip: 'Larger text',
-          onPressed: noteSize < 24 ? () => setState(() => noteSize += 1) : null,
-          icon: const Icon(Icons.add_circle_outline),
-        ),
-      ]),
-      ..._formatNotes(t.notes, noteSize),
-      _callout('Solution approach', t.approach, Icons.route),
-      _callout('Complexity and analysis', t.complexity, Icons.speed),
-    ]);
-  }
-
-  Widget _callout(String title, String body, IconData icon) => Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(top: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEEF0FF),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(icon, size: 18, color: _accent),
-            const SizedBox(width: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-          ]),
-          const SizedBox(height: 6),
-          SelectableText(body, style: const TextStyle(height: 1.45)),
+class _Pill extends StatelessWidget {
+  const _Pill({required this.icon, required this.label, this.iconColor = AppColors.muted});
+  final IconData icon;
+  final String label;
+  final Color iconColor;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(20)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: icon == Icons.circle ? 9 : 15, color: iconColor),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
         ]),
       );
+}
 
-  // Turns the plain-text notes into headed sections with readable steps.
-  List<Widget> _formatNotes(String notes, double size) {
-    final widgets = <Widget>[];
-    final heading = RegExp(r'^[A-Z0-9 /&()\-.]{3,}$');
-    for (final block in notes.split('\n\n')) {
-      final lines = block.split('\n');
-      var body = lines;
-      if (lines.isNotEmpty && heading.hasMatch(lines.first.trim())) {
-        widgets.add(Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 4),
-          child: Text(lines.first.trim(),
-              style: const TextStyle(
-                  fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.8, color: _accent)),
-        ));
-        body = lines.sublist(1);
-      }
-      for (final line in body) {
-        if (line.trim().isEmpty) continue;
-        final isStep = RegExp(r'^(\d+\.|-)\s').hasMatch(line.trim());
-        widgets.add(Padding(
-          padding: EdgeInsets.only(top: 4, left: isStep ? 8 : 0),
-          child: SelectableText(line.trim(), style: TextStyle(height: 1.55, fontSize: size)),
-        ));
-      }
-    }
-    return widgets;
+class _KeepAlive extends StatefulWidget {
+  const _KeepAlive({required this.child});
+  final Widget child;
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
+}
+
+/// One specific video per topic, embedded in the lesson.
+class LessonVideo extends StatefulWidget {
+  const LessonVideo({super.key, required this.videoId, required this.title});
+  final String videoId, title;
+  @override
+  State<LessonVideo> createState() => _LessonVideoState();
+}
+
+class _LessonVideoState extends State<LessonVideo> {
+  late final YoutubePlayerController controller = YoutubePlayerController.fromVideoId(
+    videoId: widget.videoId,
+    autoPlay: false,
+    params: const YoutubePlayerParams(showFullscreenButton: true, strictRelatedVideos: true),
+  );
+
+  @override
+  void dispose() {
+    controller.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: YoutubePlayer(controller: controller, aspectRatio: 16 / 9),
+        ),
+        const SizedBox(height: 10),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Icon(Icons.play_lesson, color: AppColors.primary, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35))),
+          TextButton(
+            onPressed: () => launchUrl(Uri.parse('https://www.youtube.com/watch?v=${widget.videoId}'), mode: LaunchMode.externalApplication),
+            child: const Text('Open in YouTube'),
+          ),
+        ]),
+      ]);
 }
 
 class CustomTimetablePage extends StatefulWidget {
