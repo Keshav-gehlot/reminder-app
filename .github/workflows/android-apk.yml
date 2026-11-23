@@ -42,6 +42,8 @@ jobs:
 
       - name: Configure Android notifications
         shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -92,6 +94,20 @@ jobs:
               # Flutter's generated Kotlin DSL template may omit a dependencies block.
               # Append an explicit block so AGP's desugaring configuration is never empty.
               g += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+          # Optional stable signing key (from the KEYSTORE_BASE64 secret) so
+          # every build can update the previous install in place.
+          import os
+          if os.environ.get("KEYSTORE_BASE64") and 'signingConfigs.getByName("release_key")' not in g:
+              g = g.replace('signingConfig = signingConfigs.getByName("debug")', 'signingConfig = signingConfigs.getByName("release_key")')
+              g = g.replace('android {', '''android {
+    signingConfigs {
+        create("release_key") {
+            storeFile = file("upload.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEYSTORE_PASSWORD")
+        }
+    }''', 1)
           gradle.write_text(g)
 
           # Flutter 3.50 generates the modern AGP 9.3 / Gradle 9.5 Android template.
@@ -101,6 +117,12 @@ jobs:
               print(settings.read_text())
           PY
 
+      - name: Install signing key (if provided)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then echo "$KEYSTORE_BASE64" | base64 -d > android/app/upload.jks; fi
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -109,10 +131,12 @@ jobs:
 
       - name: Build release APK
         env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          flutter build apk --release \
+          flutter build apk --release --build-number=${{ github.run_number }} \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
 
