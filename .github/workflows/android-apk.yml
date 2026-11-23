@@ -1,0 +1,116 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build CyberTrack 12 APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.0"
+          channel: stable
+          cache: true
+
+      - name: Generate Android platform files
+        run: |
+          if [ ! -d android ]; then
+            flutter create --platforms=android --org com.keshavgehlot --project-name cybertrack12 .
+          fi
+
+      - name: Configure Android notifications
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          text = manifest.read_text()
+          if 'android.permission.RECEIVE_BOOT_COMPLETED' not in text:
+              text = text.replace(
+                  '<application',
+                  '<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n    <application',
+                  1,
+              )
+          if 'ScheduledNotificationReceiver' not in text:
+              text = text.replace(
+                  '</application>',
+                  '        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>\n'
+                  '        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">'
+                  '<intent-filter>'
+                  '<action android:name="android.intent.action.BOOT_COMPLETED"/>'
+                  '<action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>'
+                  '<action android:name="android.intent.action.QUICKBOOT_POWERON"/>'
+                  '<action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>'
+                  '</intent-filter></receiver>\n'
+                  '</application>',
+                  1,
+              )
+          text = text.replace('android:label="cybertrack12"', 'android:label="CyberTrack 12"')
+          manifest.write_text(text)
+
+          gradle = Path("android/app/build.gradle.kts")
+          g = gradle.read_text()
+          g = g.replace('compileSdk = flutter.compileSdkVersion', 'compileSdk = 37')
+          g = g.replace('minSdk = flutter.minSdkVersion', 'minSdk = 24')
+          g = g.replace('JavaVersion.VERSION_11', 'JavaVersion.VERSION_17')
+          if 'isCoreLibraryDesugaringEnabled = true' not in g:
+              g = g.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
+          if 'coreLibraryDesugaring(' not in g:
+              if 'dependencies {' in g:
+                  g = g.replace('dependencies {', 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")', 1)
+              else:
+                  g += '\ndependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") }\n'
+          gradle.write_text(g)
+          PY
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-pub
+
+      - name: Build release APK
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cybertrack12-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Build summary
+        run: |
+          echo "## CyberTrack 12 APK" >> "$GITHUB_STEP_SUMMARY"
+          echo "The release-mode APK is available in this workflow's Artifacts section as **cybertrack12-android-apk**." >> "$GITHUB_STEP_SUMMARY"
+          echo "Cloud sync is enabled only when SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY repository variables are configured." >> "$GITHUB_STEP_SUMMARY"
