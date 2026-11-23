@@ -39,6 +39,11 @@ Color _levelColor(String level) {
   }
 }
 
+bool _needsReview(WorkspaceStore store, Lesson lesson) {
+  final progress = _progressFor(store, lesson);
+  return progress != null && progress['confidence'] == 'review';
+}
+
 int _levelRank(String level) =>
     level == 'Beginner' ? 0 : (level == 'Intermediate' ? 1 : 2);
 
@@ -79,11 +84,11 @@ class _StudyPageState extends State<StudyPage> {
         inArea.where((t) => _progressFor(store, t)?['done'] == true).length;
     final q = query.trim().toLowerCase();
     final list = inArea
-        .where((t) =>
-            level == 'All' ||
-            (level == 'To review'
-                ? _progressFor(store, t)?['confidence'] == 'review'
-                : t.level == level))
+        .where((t) {
+          if (level == 'All') return true;
+          if (level == 'To review') return _needsReview(store, t);
+          return t.level == level;
+        })
         .where((t) =>
             q.isEmpty ||
             t.title.toLowerCase().contains(q) ||
@@ -102,9 +107,7 @@ class _StudyPageState extends State<StudyPage> {
         .where((t) => _progressFor(store, t)?['done'] != true)
         .firstOrNull;
     final streak = _streak(store);
-    final reviewCount = inArea
-        .where((t) => _progressFor(store, t)?['confidence'] == 'review')
-        .length;
+    final reviewCount = inArea.where((t) => _needsReview(store, t)).length;
 
     return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 28), children: [
       const Text('Study',
