@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: android-apk-${{ github.ref }}
@@ -112,6 +112,16 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish APK as GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk CyberTrack12.apk
+          tag="build-${{ github.run_number }}"
+          gh release create "$tag" CyberTrack12.apk \
+            --title "CyberTrack 12 build ${{ github.run_number }}" \
+            --notes "Release APK from commit ${{ github.sha }}. Cloud sync works if SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY variables were set, or after entering them in the app (Account > Cloud sync setup)."
 
       - name: Build summary
         run: |

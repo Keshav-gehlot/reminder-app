@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'learning_planner_pages.dart';
+import 'sync_setup_screen.dart';
 
 import '../data/workspace_store.dart';
 
@@ -116,6 +117,15 @@ class _AppShellState extends State<AppShell> {
                 } : null,
                 icon: const Icon(Icons.sync), label: const Text('Sync now'),
               )),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const SyncSetupScreen()));
+                },
+                icon: const Icon(Icons.cloud_outlined),
+                label: const Text('Cloud sync setup'),
+              ),
               if (widget.client?.auth.currentSession != null)
                 TextButton.icon(
                   onPressed: () async {

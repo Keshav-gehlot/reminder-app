@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data/workspace_store.dart';
@@ -8,6 +9,8 @@ import 'screens/app_shell.dart';
 import 'screens/login_screen.dart';
 import 'services/notification_service.dart';
 
+const prefsUrlKey = 'cybertrack_supabase_url';
+const prefsKeyKey = 'cybertrack_supabase_key';
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabasePublishableKey =
     String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
@@ -16,14 +19,20 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.instance.initialize();
 
+  // Build-time values win; otherwise use values saved from inside the app.
+  final prefs = await SharedPreferences.getInstance();
+  final url = supabaseUrl.isNotEmpty
+      ? supabaseUrl
+      : (prefs.getString(prefsUrlKey) ?? '');
+  final key = supabasePublishableKey.isNotEmpty
+      ? supabasePublishableKey
+      : (prefs.getString(prefsKeyKey) ?? '');
+
   SupabaseClient? client;
-  final keyConfigured = supabasePublishableKey.startsWith('sb_publishable_') ||
-      supabasePublishableKey.startsWith('eyJ');
-  if (supabaseUrl.startsWith('https://') && keyConfigured) {
-    await Supabase.initialize(
-      url: supabaseUrl,
-      publishableKey: supabasePublishableKey,
-    );
+  final keyConfigured =
+      key.startsWith('sb_publishable_') || key.startsWith('eyJ');
+  if (url.startsWith('https://') && keyConfigured) {
+    await Supabase.initialize(url: url, publishableKey: key);
     client = Supabase.instance.client;
   }
 
