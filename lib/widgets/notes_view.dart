@@ -499,20 +499,21 @@ class _TreePainter extends CustomPainter {
     for (var i = 0; i < nodes.length; i++) {
       if (!_present(i)) continue;
       final p = _pos(i, size);
-      canvas.drawCircle(p, 19, Paint()..color = i == 0 ? AppColors.primary : AppColors.primarySoft);
-      canvas.drawCircle(
-          p,
-          19,
+      final tp = TextPainter(
+        text: TextSpan(
+            text: nodes[i],
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: i == 0 ? Colors.white : AppColors.ink)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final w = math.max(38.0, tp.width + 18);
+      final rect = RRect.fromRectAndRadius(Rect.fromCenter(center: p, width: w, height: 36), const Radius.circular(18));
+      canvas.drawRRect(rect, Paint()..color = i == 0 ? AppColors.primary : AppColors.primarySoft);
+      canvas.drawRRect(
+          rect,
           Paint()
             ..color = AppColors.primary
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1.5);
-      final tp = TextPainter(
-        text: TextSpan(
-            text: nodes[i],
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: i == 0 ? Colors.white : AppColors.ink)),
-        textDirection: TextDirection.ltr,
-      )..layout();
       tp.paint(canvas, p - Offset(tp.width / 2, tp.height / 2));
     }
   }

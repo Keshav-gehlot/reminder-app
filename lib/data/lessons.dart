@@ -14,6 +14,11 @@
 //   [table] H1|H2 ; a|b ; c|d                table, first row is header
 //   [perm] -rwsr-xr--                        Linux permission breakdown
 
+import 'lessons_more.dart';
+
+/// Every topic in the app: core DSA + CTF, extra DSA, and the AI/ML/DL track.
+const List<Lesson> lessons = [...coreLessons, ...extraDsaLessons, ...aiLessons];
+
 class Lesson {
   const Lesson({
     required this.area,
@@ -54,7 +59,7 @@ class PracticeLink {
 
 const _pico = 'https://play.picoctf.org/practice?category=';
 
-const List<Lesson> lessons = [
+const List<Lesson> coreLessons = [
   // ───────────────────────────── DSA ─────────────────────────────
   Lesson(
     area: 'DSA',

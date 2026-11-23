@@ -98,6 +98,7 @@ class _StudyPageState extends State<StudyPage> {
         segments: const [
           ButtonSegment(value: 'DSA', label: Text('DSA'), icon: Icon(Icons.code)),
           ButtonSegment(value: 'CTF', label: Text('CTF'), icon: Icon(Icons.security)),
+          ButtonSegment(value: 'AI', label: Text('AI / ML'), icon: Icon(Icons.psychology_outlined)),
         ],
         selected: {area},
         onSelectionChanged: (v) => setState(() {
@@ -392,7 +393,7 @@ class _LessonPageState extends State<LessonPage> {
           bottom: TabBar(tabs: [
             const Tab(text: 'Learn'),
             const Tab(text: 'Practice'),
-            if (hasLabs) const Tab(text: 'Labs & exams'),
+            if (hasLabs) Tab(text: t.area == 'CTF' ? 'Labs & exams' : (t.area == 'AI' ? 'Hands-on' : 'Problems')),
           ]),
         ),
         body: AnimatedBuilder(
@@ -556,12 +557,29 @@ class _LessonPageState extends State<LessonPage> {
 
   Widget labsTab() {
     final t = widget.lesson;
-    IconData iconFor(String p) => p.startsWith('HTB') ? Icons.dns : (p == 'picoCTF' ? Icons.flag : Icons.terminal);
-    Color colorFor(String p) => p.startsWith('HTB') ? AppColors.success : (p == 'picoCTF' ? AppColors.accent : AppColors.danger);
+    IconData iconFor(String p) => switch (p) {
+          'LeetCode' => Icons.code,
+          'Kaggle' => Icons.auto_graph,
+          'picoCTF' => Icons.flag,
+          'TryHackMe' => Icons.terminal,
+          _ => Icons.dns,
+        };
+    Color colorFor(String p) => switch (p) {
+          'LeetCode' => AppColors.accent,
+          'Kaggle' => AppColors.primary,
+          'picoCTF' => AppColors.warning,
+          'TryHackMe' => AppColors.danger,
+          _ => AppColors.success,
+        };
     return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
-      const Text('Hands-on labs', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+      Text(t.area == 'CTF' ? 'Hands-on labs' : (t.area == 'AI' ? 'Hands-on courses' : 'Practice problems'),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
       const SizedBox(height: 4),
-      const Text('Practise this topic on real platforms. Only attack machines you are given.', style: TextStyle(color: AppColors.muted)),
+      Text(
+          t.area == 'CTF'
+              ? 'Practise this topic on real platforms. Only attack machines you are given.'
+              : (t.area == 'AI' ? 'Free interactive notebooks to try it yourself.' : 'Solve these after the lesson, then revisit in a week.'),
+          style: const TextStyle(color: AppColors.muted)),
       const SizedBox(height: 12),
       for (final p in t.practice)
         Padding(

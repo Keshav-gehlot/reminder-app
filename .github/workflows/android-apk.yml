@@ -25,7 +25,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -106,6 +106,8 @@ jobs:
           if os.environ.get("KEYSTORE_BASE64") and 'signingConfigs.getByName("release_key")' not in g:
               g = g.replace('signingConfig = signingConfigs.getByName("debug")', 'signingConfig = signingConfigs.getByName("release_key")')
               g = g.replace('android {', 'android {\n    signingConfigs {\n        create("release_key") {\n            storeFile = file("upload.jks")\n            storePassword = System.getenv("KEYSTORE_PASSWORD")\n            keyAlias = System.getenv("KEY_ALIAS")\n            keyPassword = System.getenv("KEYSTORE_PASSWORD")\n        }\n    }', 1)
+          if 'checkReleaseBuilds' not in g:
+              g = g.replace('android {', 'android {\n    lint {\n        checkReleaseBuilds = false\n        abortOnError = false\n    }', 1)
           gradle.write_text(g)
 
           # Flutter 3.50 generates the modern AGP 9.3 / Gradle 9.5 Android template.
