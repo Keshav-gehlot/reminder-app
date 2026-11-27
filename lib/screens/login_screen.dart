@@ -73,9 +73,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     setState(() => busy = true);
     try {
-      await client.auth.signInWithOtp(email: address);
+      await client.auth.signInWithOtp(email: address, emailRedirectTo: redirect);
       if (mounted) setState(() => sent = true);
-      message('We sent a 6-digit code to $address.');
+      message('Check $address: tap the sign-in link on this phone, or type the code if the email has one.');
     } catch (e) {
       message('Could not send the code: $e');
     } finally {
