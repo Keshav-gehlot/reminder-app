@@ -61,22 +61,6 @@ void main() {
     await tapText(tester, 'Study');
     await shot(tester, '03-study');
 
-    await tapText(tester, 'Arrays and hash maps');
-    await settle(tester, 4);
-    await shot(tester, '04-lesson-learn');
-
-    final quizTab = find.widgetWithText(Tab, 'Quiz');
-    if (quizTab.evaluate().isNotEmpty) {
-      await tester.tap(quizTab);
-      await settle(tester);
-      await shot(tester, '05-lesson-quiz');
-    }
-    final back = find.byTooltip('Back');
-    if (back.evaluate().isNotEmpty) {
-      await tester.tap(back.first);
-      await settle(tester);
-    }
-
     await tapText(tester, 'CTF');
     await shot(tester, '06-study-ctf');
 
@@ -85,6 +69,19 @@ void main() {
 
     await tapText(tester, 'Track');
     await shot(tester, '08-track');
+
+    // Lesson page last: its YouTube web view is heavy on the CI emulator.
+    await tapText(tester, 'Study');
+    await tapText(tester, 'DSA');
+    binding.reportData = {'screenshots': _shots};
+    await tapText(tester, 'Arrays and hash maps');
+    await settle(tester, 3);
+    final quizTab = find.widgetWithText(Tab, 'Quiz');
+    if (quizTab.evaluate().isNotEmpty) {
+      await tester.tap(quizTab);
+      await settle(tester);
+      await shot(tester, '09-lesson-quiz');
+    }
     binding.reportData = {'screenshots': _shots};
   });
 }
