@@ -42,26 +42,28 @@ class _LoginScreenState extends State<LoginScreen> {
     return c;
   }
 
-  Future<void> google() async {
+  Future<void> oauth(OAuthProvider provider, String name) async {
     final client = ensureClient();
     if (client == null) return;
     setState(() => busy = true);
     try {
       await client.auth.signInWithOAuth(
-        OAuthProvider.google,
+        provider,
         redirectTo: redirect,
         authScreenLaunchMode: LaunchMode.externalApplication,
       );
     } on AuthException catch (e) {
       message(e.message.contains('provider is not enabled')
-          ? 'Google sign-in is not enabled for this project yet. Use the email code for now.'
-          : 'Google sign-in failed: ${e.message}');
+          ? '$name sign-in is not switched on yet. Try another option.'
+          : '$name sign-in failed: ${e.message}');
     } catch (e) {
-      message('Google sign-in failed: $e');
+      message('$name sign-in failed: $e');
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
+
+  Future<void> google() => oauth(OAuthProvider.google, 'Google');
 
   Future<void> sendCode() async {
     final client = ensureClient();
@@ -154,6 +156,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   label: const Text('Continue with Google'),
                 ),
+                const SizedBox(height: 10),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: busy ? null : () => oauth(OAuthProvider.github, 'GitHub'),
+                      icon: const Icon(Icons.code),
+                      label: const Text('GitHub'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: busy ? null : () => oauth(OAuthProvider.gitlab, 'GitLab'),
+                      icon: const Icon(Icons.merge_type),
+                      label: const Text('GitLab'),
+                    ),
+                  ),
+                ]),
                 const SizedBox(height: 10),
                 if (!showEmail)
                   OutlinedButton.icon(
