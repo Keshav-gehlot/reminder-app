@@ -5,6 +5,8 @@ import '../data/lessons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/crash_log.dart';
 import '../services/news_service.dart';
+import '../services/accounts_service.dart';
+import 'accounts_page.dart';
 import 'home_extras.dart';
 import '../theme.dart';
 import '../widgets/voice_sheet.dart';
@@ -38,6 +40,16 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int tab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    Future(() async {
+      await AccountsService.migrateLegacy(widget.store);
+      await AccountsService.refreshStale(widget.store);
+    });
+  }
+
   static const titles = ['CyberTrack', 'Study', 'Plan', 'Track'];
 
   @override
@@ -49,9 +61,10 @@ class _AppShellState extends State<AppShell> {
         CustomTimetablePage(store: widget.store),
         ReminderPage(store: widget.store),
       ]),
-      _TabbedSection(tabs: const ['Practice log', 'Research'], children: [
+      _TabbedSection(tabs: const ['Practice log', 'Research', 'Accounts'], children: [
         PracticePage(store: widget.store),
         ResearchPage(store: widget.store),
+        AccountsPage(store: widget.store),
       ]),
     ];
     return Scaffold(
@@ -154,6 +167,16 @@ class _AppShellState extends State<AppShell> {
                   icon: const Icon(Icons.logout), label: const Text('Sign out'),
                 ),
               const Divider(height: 24),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.link),
+                title: const Text('Linked accounts'),
+                subtitle: const Text('LeetCode, TryHackMe, HTB, picoCTF, CTFtime, Codeforces, GitHub'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => AccountsPage(store: widget.store, standalone: true)));
+                },
+              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.bug_report_outlined),
@@ -298,7 +321,10 @@ class PracticePage extends StatelessWidget {
         Expanded(child: MetricBox('Coding entries', coding.toString(), Icons.code, Colors.blue)),
       ]),
       const SizedBox(height: 13),
-      const LeetCodeCard(),
+      LinkedAccountsSummary(
+        store: store,
+        onManage: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AccountsPage(store: store, standalone: true))),
+      ),
       const SizedBox(height: 13),
       FilledButton.icon(onPressed: () => addActivity(context, store), icon: const Icon(Icons.add), label: const Text('Add practice entry')),
       const SizedBox(height: 17),

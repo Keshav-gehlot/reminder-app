@@ -1,6 +1,5 @@
 import 'package:cybertrack12/data/lessons.dart';
 import 'package:cybertrack12/data/quizzes.dart';
-import 'package:cybertrack12/services/leetcode_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -39,25 +38,5 @@ void main() {
     for (final t in ['Binary exploitation basics', 'OSINT investigations', 'Steganography', 'Active Directory basics']) {
       expect(titles, contains(t));
     }
-  });
-
-  test('LeetCode GraphQL response parsing', () {
-    final s = LeetCodeStats.fromGraphQL('keshav', {
-      'data': {
-        'matchedUser': {
-          'submitStatsGlobal': {
-            'acSubmissionNum': [
-              {'difficulty': 'All', 'count': 60},
-              {'difficulty': 'Easy', 'count': 30},
-              {'difficulty': 'Medium', 'count': 25},
-              {'difficulty': 'Hard', 'count': 5},
-            ]
-          }
-        }
-      }
-    });
-    expect(s!.total, 60);
-    expect(s.medium, 25);
-    expect(LeetCodeStats.fromGraphQL('nobody', {'data': {'matchedUser': null}}), isNull);
   });
 }
