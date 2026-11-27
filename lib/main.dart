@@ -17,7 +17,10 @@ const prefsSkipLoginKey = 'cybertrack_skip_login';
 
 /// Default project for CyberTrack. The publishable key is entered once in the
 /// app (or supplied at build time); the URL is prefilled for convenience.
-const defaultSupabaseUrl = 'https://yfoqqokapqlvqibifizp.supabase.co';
+const defaultSupabaseUrl = 'https://tjskgpyhkzdoxmdyjkiq.supabase.co';
+// Publishable (client-side) key: safe to ship in the app; row-level security
+// keeps every user's data private.
+const defaultPublishableKey = 'sb_publishable_ORxe5Fq4xM0bLjrRAHZQSQ_142KdlHD';
 
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabasePublishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
@@ -54,8 +57,8 @@ class _RootState extends State<Root> {
 
   Future<_Boot> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final url = supabaseUrl.isNotEmpty ? supabaseUrl : (prefs.getString(prefsUrlKey) ?? defaultSupabaseUrl);
-    final key = supabasePublishableKey.isNotEmpty ? supabasePublishableKey : (prefs.getString(prefsKeyKey) ?? '');
+    final url = supabaseUrl.isNotEmpty ? supabaseUrl : defaultSupabaseUrl;
+    final key = supabasePublishableKey.isNotEmpty ? supabasePublishableKey : defaultPublishableKey;
     SupabaseClient? client;
     final keyOk = key.startsWith('sb_publishable_') || key.startsWith('eyJ');
     if (url.startsWith('https://') && keyOk) {
