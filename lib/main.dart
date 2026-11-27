@@ -17,10 +17,10 @@ const prefsSkipLoginKey = 'cybertrack_skip_login';
 
 /// Default project for CyberTrack. The publishable key is entered once in the
 /// app (or supplied at build time); the URL is prefilled for convenience.
-const defaultSupabaseUrl = 'https://tjskgpyhkzdoxmdyjkiq.supabase.co';
+const defaultSupabaseUrl = 'https://tqpzuznqvrejwstfcarb.supabase.co';
 // Publishable (client-side) key: safe to ship in the app; row-level security
 // keeps every user's data private.
-const defaultPublishableKey = 'sb_publishable_ORxe5Fq4xM0bLjrRAHZQSQ_142KdlHD';
+const defaultPublishableKey = 'sb_publishable_WpXVDT8azdNMYJIrZNnlcg_hEiTfiUu';
 
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabasePublishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
