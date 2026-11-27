@@ -81,10 +81,42 @@ class NotificationService {
   Future<void> rescheduleAll(List<Map<String, dynamic>> items) async {
     if (!_initialized) return;
     await _plugin.cancelAll();
+    final nudge = _lastNudge;
+    if (nudge != null) await scheduleNudge(hour: nudge.$1, metToday: nudge.$2, body: nudge.$3);
     for (final item in items) {
-      if (item['kind'] == 'reminder') {
+      if (item['kind'] == 'reminder' || item['kind'] == 'milestone') {
         await schedule(item);
       }
     }
+  }
+
+  static const _nudgeId = 990001;
+  (int, bool, String)? _lastNudge;
+
+  /// One evening nudge for the daily goal. If today's goal is already met
+  /// (or the hour has passed) it moves to tomorrow, so it never nags twice.
+  Future<void> scheduleNudge({required int hour, required bool metToday, required String body}) async {
+    _lastNudge = (hour, metToday, body);
+    if (!_initialized) return;
+    final now = DateTime.now();
+    var at = DateTime(now.year, now.month, now.day, hour);
+    if (metToday || !at.isAfter(now)) at = DateTime(now.year, now.month, now.day + 1, hour);
+    await _plugin.cancel(id: _nudgeId);
+    await _requestPermission();
+    await _plugin.zonedSchedule(
+      id: _nudgeId,
+      title: metToday ? 'Keep your streak going' : 'Daily goal not done yet',
+      body: body,
+      scheduledDate: tz.TZDateTime.from(at, tz.local),
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'cybertrack_goal',
+          'Daily goal',
+          channelDescription: 'Evening reminder for your daily study goal',
+          importance: Importance.defaultImportance,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+    );
   }
 }

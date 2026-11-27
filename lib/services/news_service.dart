@@ -54,17 +54,21 @@ class NewsService {
       for (final e in _cyberFeeds.entries) _fetch(e.key, e.value, true),
       for (final e in _techFeeds.entries) _fetch(e.key, e.value, false),
     ]);
-    final all = results.expand((x) => x).toList();
+    final items = select(results.expand((x) => x).toList());
+    if (items.isNotEmpty) {
+      await prefs.setString(_cacheKey, jsonEncode({'day': _today(), 'items': items.map((e) => e.toJson()).toList()}));
+    }
+    return items;
+  }
+
+  /// De-duplicates, sorts newest first, and applies the 5 cyber / 15 total caps.
+  static List<NewsItem> select(List<NewsItem> all) {
     final seen = <String>{};
     final unique = all.where((i) => seen.add(i.title.toLowerCase())).toList()
       ..sort((a, b) => b.published.compareTo(a.published));
     final cyber = unique.where((i) => i.cyber).take(maxCyber).toList();
     final tech = unique.where((i) => !i.cyber).take(maxTotal - cyber.length).toList();
-    final items = [...cyber, ...tech].take(maxTotal).toList();
-    if (items.isNotEmpty) {
-      await prefs.setString(_cacheKey, jsonEncode({'day': _today(), 'items': items.map((e) => e.toJson()).toList()}));
-    }
-    return items;
+    return [...cyber, ...tech].take(maxTotal).toList();
   }
 
   static Future<List<NewsItem>> _fetch(String source, String url, bool cyber) async {
@@ -73,26 +77,29 @@ class NewsService {
           .get(Uri.parse(url), headers: {'User-Agent': 'Mozilla/5.0 (Android) CyberTrack/1.0'})
           .timeout(const Duration(seconds: 10));
       if (res.statusCode != 200) return [];
-      final doc = XmlDocument.parse(utf8.decode(res.bodyBytes, allowMalformed: true));
-      final out = <NewsItem>[];
-      // RSS 2.0
-      for (final item in doc.findAllElements('item').take(10)) {
-        final title = item.getElement('title')?.innerText.trim() ?? '';
-        final link = item.getElement('link')?.innerText.trim() ?? '';
-        final date = _parseDate(item.getElement('pubDate')?.innerText ?? '');
-        if (title.isNotEmpty && link.startsWith('http')) out.add(NewsItem(_clean(title), link, source, date, cyber));
-      }
-      // Atom
-      for (final entry in doc.findAllElements('entry').take(10)) {
-        final title = entry.getElement('title')?.innerText.trim() ?? '';
-        final link = entry.findElements('link').map((l) => l.getAttribute('href') ?? '').firstWhere((h) => h.startsWith('http'), orElse: () => '');
-        final date = _parseDate(entry.getElement('updated')?.innerText ?? entry.getElement('published')?.innerText ?? '');
-        if (title.isNotEmpty && link.isNotEmpty) out.add(NewsItem(_clean(title), link, source, date, cyber));
-      }
-      return out;
+      return parseFeed(utf8.decode(res.bodyBytes, allowMalformed: true), source, cyber);
     } catch (_) {
       return [];
     }
+  }
+
+  /// Parses an RSS 2.0 or Atom document into news items (max 10 of each).
+  static List<NewsItem> parseFeed(String xml, String source, bool cyber) {
+    final doc = XmlDocument.parse(xml);
+    final out = <NewsItem>[];
+    for (final item in doc.findAllElements('item').take(10)) {
+      final title = item.getElement('title')?.innerText.trim() ?? '';
+      final link = item.getElement('link')?.innerText.trim() ?? '';
+      final date = parseDate(item.getElement('pubDate')?.innerText ?? '');
+      if (title.isNotEmpty && link.startsWith('http')) out.add(NewsItem(_clean(title), link, source, date, cyber));
+    }
+    for (final entry in doc.findAllElements('entry').take(10)) {
+      final title = entry.getElement('title')?.innerText.trim() ?? '';
+      final link = entry.findElements('link').map((l) => l.getAttribute('href') ?? '').firstWhere((h) => h.startsWith('http'), orElse: () => '');
+      final date = parseDate(entry.getElement('updated')?.innerText ?? entry.getElement('published')?.innerText ?? '');
+      if (title.isNotEmpty && link.isNotEmpty) out.add(NewsItem(_clean(title), link, source, date, cyber));
+    }
+    return out;
   }
 
   static String _clean(String s) => s
@@ -102,7 +109,7 @@ class NewsService {
       .replaceAll('&quot;', '"')
       .replaceAll(RegExp(r'<[^>]+>'), '');
 
-  static DateTime _parseDate(String s) {
+  static DateTime parseDate(String s) {
     final iso = DateTime.tryParse(s.trim());
     if (iso != null) return iso.toUtc();
     // RFC 822: "Mon, 23 Nov 2026 10:00:00 +0000" or "... GMT"

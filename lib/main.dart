@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'data/workspace_store.dart';
 import 'screens/app_shell.dart';
 import 'screens/login_screen.dart';
+import 'services/crash_log.dart';
 import 'services/notification_service.dart';
 import 'theme.dart';
 
@@ -23,7 +24,12 @@ const supabasePublishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY'
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.instance.initialize();
+  await CrashLog.install();
+  try {
+    await NotificationService.instance.initialize();
+  } catch (e, st) {
+    CrashLog.record('Notification init failed: $e', st);
+  }
   runApp(const Root());
 }
 

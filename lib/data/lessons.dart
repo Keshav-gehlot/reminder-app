@@ -17,7 +17,7 @@
 import 'lessons_more.dart';
 
 /// Every topic in the app: core DSA + CTF, extra DSA, and the AI/ML/DL track.
-const List<Lesson> lessons = [...coreLessons, ...extraDsaLessons, ...aiLessons];
+const List<Lesson> lessons = [...coreLessons, ...extraDsaLessons, ...ctfExtraLessons, ...aiLessons];
 
 class Lesson {
   const Lesson({

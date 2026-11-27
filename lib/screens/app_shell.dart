@@ -3,13 +3,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'learning_planner_pages.dart';
 import '../data/lessons.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/crash_log.dart';
 import '../services/news_service.dart';
+import 'home_extras.dart';
 import '../theme.dart';
 import '../widgets/voice_sheet.dart';
 
 import '../data/workspace_store.dart';
 
 const accent = Color(0xFF4F46E5);
+const appBuild = String.fromEnvironment('APP_BUILD', defaultValue: 'dev');
 String txt(dynamic value) => value?.toString() ?? '';
 DateTime? dateOf(dynamic value) => value is String ? DateTime.tryParse(value) : null;
 const projects = ['LeakTrace + ECDAT', 'CROSSWITNESS', 'Network Attack Forecasting', 'Bluetooth Music Middleware'];
@@ -104,7 +107,8 @@ class _AppShellState extends State<AppShell> {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (ctx) => SafeArea(child: Padding(
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: AnimatedBuilder(
           animation: widget.store,
@@ -149,6 +153,16 @@ class _AppShellState extends State<AppShell> {
                   },
                   icon: const Icon(Icons.logout), label: const Text('Sign out'),
                 ),
+              const Divider(height: 24),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.bug_report_outlined),
+                title: const Text('Report a problem'),
+                subtitle: Text(CrashLog.entries().isEmpty
+                    ? 'Opens a GitHub issue form'
+                    : '${CrashLog.entries().length} recent error(s) will be attached'),
+                onTap: () => launchUrl(CrashLog.reportUrl(version: appBuild), mode: LaunchMode.externalApplication),
+              ),
               const Text('Sign in with the same email on all Android devices. Notifications are scheduled locally on each device.',
                 style: TextStyle(fontSize: 11, color: Colors.black54)),
             ]);
@@ -222,6 +236,10 @@ class HomePage extends StatelessWidget {
         ),
         const SizedBox(height: 14),
       ],
+      DailyGoalCard(store: store),
+      const SizedBox(height: 14),
+      DueReviewCard(store: store),
+      DeadlinesCard(store: store, onOpenResearch: () => onOpenTab(3)),
       Card(
         child: ListTile(
           onTap: () => onOpenTab(1),
@@ -280,6 +298,8 @@ class PracticePage extends StatelessWidget {
         Expanded(child: MetricBox('Coding entries', coding.toString(), Icons.code, Colors.blue)),
       ]),
       const SizedBox(height: 13),
+      const LeetCodeCard(),
+      const SizedBox(height: 13),
       FilledButton.icon(onPressed: () => addActivity(context, store), icon: const Icon(Icons.add), label: const Text('Add practice entry')),
       const SizedBox(height: 17),
       const SectionLabel('Activity history', 'Latest first'),
@@ -327,18 +347,27 @@ class ResearchPage extends StatelessWidget {
       const PageHeading('Research workspace', 'Manage four parallel workstreams and record your research notes.'),
       ...projects.map((p) {
         final count = logs.where((e) => e['project'] == p).length;
+        final ms = upcomingMilestones(store, project: p);
+        final doneMs = store.ofKind('milestone').where((m) => m['project'] == p && m['done'] == true).length;
         return Card(margin: const EdgeInsets.only(bottom: 10), child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(p, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
             const SizedBox(height: 5),
-            Text(projectInfo(p), style: TextStyle(color: Colors.grey.shade700, fontSize: 11)),
-            const SizedBox(height: 10),
-            Text(count.toString() + ' research updates logged', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
-            const SizedBox(height: 5),
-            OutlinedButton.icon(
-              onPressed: () => addActivity(context, store, category: 'Research', project: p),
-              icon: const Icon(Icons.note_add_outlined), label: const Text('Add research update')),
+            Text(projectInfo(p), style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+            const SizedBox(height: 8),
+            Text('$count updates · ${ms.length} open milestone${ms.length == 1 ? '' : 's'}${doneMs > 0 ? ' · $doneMs done' : ''}',
+                style: const TextStyle(color: AppColors.muted, fontSize: 12, fontFeatures: [FontFeature.tabularFigures()])),
+            for (final m in ms.take(4)) MilestoneTile(item: m, store: store),
+            const SizedBox(height: 6),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              OutlinedButton.icon(
+                onPressed: () => addActivity(context, store, category: 'Research', project: p),
+                icon: const Icon(Icons.note_add_outlined), label: const Text('Add update')),
+              OutlinedButton.icon(
+                onPressed: () => addMilestone(context, store, p),
+                icon: const Icon(Icons.flag_outlined), label: const Text('Add milestone')),
+            ]),
           ]),
         ));
       }),

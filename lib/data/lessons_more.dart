@@ -1036,3 +1036,163 @@ Attention(Q, K, V) = softmax(Q·Kᵀ / √d) · V
     practice: [PracticeLink('Kaggle', 'Intro to Deep Learning', '${_kaggle}intro-to-deep-learning')],
   ),
 ];
+
+const _pico = 'https://play.picoctf.org/practice?category=';
+
+const List<Lesson> ctfExtraLessons = [
+  Lesson(
+    area: 'CTF',
+    title: 'Binary exploitation basics',
+    summary: 'How a buffer overflow takes over a program.',
+    level: 'Advanced',
+    minutes: 30,
+    question: 'A training binary copies your input into a 64-byte buffer with gets(). Explain why that is dangerous, how an overflow can change control flow, and which protections stop it.',
+    hints: [
+      'gets() never checks the length of the input.',
+      'Past the buffer on the stack sit the saved frame pointer and the return address.',
+      'Canaries, NX and ASLR each block a different step of the attack.',
+    ],
+    notes: r'''
+# The stack frame
+[stack] return-address saved-RBP buffer[64]
+
+Writing more than 64 bytes runs past the buffer, over the saved frame pointer, and into the return address. When the function returns, the CPU jumps wherever that address points.
+
+# Attack steps (in a lab)
+[flow] Find the input that crashes the program -> Find the offset to the return address (cyclic pattern) -> Overwrite it with a target address -> Program jumps to attacker-chosen code
+
+# Protections
+[table] Protection|What it stops ; Stack canary|detects the overwrite before returning ; NX / DEP|stack memory can't execute code ; ASLR / PIE|addresses change every run ; RELRO|protects the GOT from overwrites
+
+```
+checksec ./vuln          # which protections are on
+gdb ./vuln               # find the crash and offset
+python3 -c "from pwn import *; print(cyclic(100))"
+```
+
+> The fix is in the code: use fgets(buf, sizeof buf, stdin), bounds checks, and memory-safe languages.
+
+! Only exploit binaries from CTFs or labs you are allowed to attack.
+''',
+    keyPoints: ['Unchecked copies overwrite the return address.', 'Find the offset, then control the jump.', 'Canary, NX, ASLR each block a step.'],
+    complexity: 'Effort grows with each protection you must bypass',
+    videoId: 'wa3sMSdLyHw',
+    videoTitle: 'Intro to binary exploitation: buffer overflows · CryptoCat',
+    exam: ['CEH v13 · Module 06: System Hacking (buffer overflows)', 'CEH v13 · Module 05: Vulnerability Analysis', 'CCSA · Threat Prevention: IPS protections against exploit traffic'],
+    practice: [
+      PracticeLink('TryHackMe', 'Intro To Pwntools', 'https://tryhackme.com/room/introtopwntools'),
+      PracticeLink('HTB Academy', 'Stack-Based Buffer Overflows on Linux x86', 'https://academy.hackthebox.com/course/preview/stack-based-buffer-overflows-on-linux-x86'),
+      PracticeLink('picoCTF', 'Binary Exploitation challenges', '${_pico}6'),
+    ],
+  ),
+  Lesson(
+    area: 'CTF',
+    title: 'OSINT investigations',
+    summary: 'Find answers in public information, methodically.',
+    level: 'Beginner',
+    minutes: 20,
+    question: 'A CTF gives you one photo and a username. Describe a methodical OSINT process to find where the photo was taken and which accounts belong to the user.',
+    hints: [
+      'Start with what the file itself contains: metadata.',
+      'Reverse image search and landmarks can geolocate a photo.',
+      'Check the username across platforms, then confirm links with more than one clue.',
+    ],
+    notes: r'''
+# OSINT cycle
+[flow] Define the question -> Collect from public sources -> Pivot on each new clue -> Verify with two or more sources -> Report with evidence
+
+# Pivots from one clue
+[table] Starting point|Next step|Tool ; Image|metadata, GPS, reverse search|exiftool, Google Lens, Yandex ; Username|same name on other sites|Sherlock, WhatsMyName ; Email|breaches, registered accounts|Have I Been Pwned ; Domain|WHOIS, DNS, old versions|whois, crt.sh, Wayback Machine
+
+# Good habits
+- Screenshot and note the URL and time of every finding.
+- One matching username is a weak signal; matching photo, writing style and location is strong.
+- Separate facts from guesses in your notes.
+
+! OSINT is for CTF targets and authorised work only. Never use it to stalk or expose real people.
+''',
+    keyPoints: ['Pivot from clue to clue.', 'Verify with independent sources.', 'Document every step.'],
+    complexity: 'Investigation time depends on how many pivots you need',
+    videoId: 'qwA6MmbeGNo',
+    videoTitle: 'Open-Source Intelligence (OSINT) full course · The Cyber Mentor',
+    exam: ['CEH v13 · Module 02: Footprinting and Reconnaissance', 'CEH v13 · Module 09: Social Engineering'],
+    practice: [
+      PracticeLink('TryHackMe', 'OhSINT', 'https://tryhackme.com/room/ohsint'),
+      PracticeLink('TryHackMe', 'Sakura Room', 'https://tryhackme.com/room/sakura'),
+      PracticeLink('HTB Academy', 'OSINT: Corporate Recon', 'https://academy.hackthebox.com/course/preview/osint-corporate-recon'),
+    ],
+  ),
+  Lesson(
+    area: 'CTF',
+    title: 'Steganography',
+    summary: 'Find data hidden inside images and audio.',
+    level: 'Beginner',
+    minutes: 20,
+    question: 'You get a normal-looking PNG and a WAV file. Describe the checks you would run, in order, to find a hidden flag.',
+    hints: [
+      'Start cheap: file type, strings and metadata.',
+      'Check for files appended or embedded inside.',
+      'Then try pixel tricks (least significant bits) and audio spectrograms.',
+    ],
+    notes: r'''
+# How LSB hiding works
+[bytes] 1 0 1 1 0 1 1 0 | pixel byte, last bit replaced
+Changing the least significant bit of each colour value barely changes the picture, but 8 pixels carry one hidden byte.
+
+# Checklist
+[flow] file + strings -> exiftool (metadata, comments) -> binwalk (embedded files) -> zsteg / stegsolve (PNG bit planes) -> steghide (JPEG, password) -> Audacity / Sonic Visualiser (spectrogram)
+
+# Tools by format
+[table] Format|Try first ; PNG / BMP|zsteg, stegsolve ; JPEG|steghide, stegseek, exiftool ; WAV / MP3|spectrogram view, strings ; Any|binwalk, strings, hex editor
+
+> Most CTF stego is solved by the first three cheap checks. Don't jump to brute force.
+''',
+    keyPoints: ['Cheap checks first.', 'LSB = tiny change, hidden bits.', 'Spectrograms reveal audio messages.'],
+    complexity: 'Mostly quick checks; password brute force is slow',
+    videoId: 'TWEXCYQKyDc',
+    videoTitle: 'Secrets hidden in images (steganography) · Computerphile',
+    exam: ['CEH v13 · Module 06: System Hacking (steganography)', 'CCSA · Threat Prevention: Threat Extraction (removing hidden content)'],
+    practice: [
+      PracticeLink('TryHackMe', 'c4ptur3-th3-fl4g', 'https://tryhackme.com/room/c4ptur3th3fl4g'),
+      PracticeLink('TryHackMe', 'Cicada-3301 Vol:1', 'https://tryhackme.com/room/cicada3301vol1'),
+      PracticeLink('picoCTF', 'Forensics challenges', '${_pico}4'),
+    ],
+  ),
+  Lesson(
+    area: 'CTF',
+    title: 'Active Directory basics',
+    summary: 'How Windows domains work, and where attacks start.',
+    level: 'Advanced',
+    minutes: 25,
+    question: 'Explain what a domain controller does, how Kerberos logs a user in, and why a weak service account password is dangerous.',
+    hints: [
+      'The domain controller stores accounts and checks logins for the whole network.',
+      'Kerberos gives you tickets instead of sending your password around.',
+      'Service tickets are encrypted with the service account password, so they can be cracked offline.',
+    ],
+    notes: r'''
+# Structure
+[flow] Forest -> Domain (corp.local) -> Organisational Units -> Users, groups, computers
+
+# Kerberos login
+[flow] User asks the KDC for a TGT -> KDC checks the password, returns the TGT -> User asks for a service ticket with the TGT -> User presents the ticket to the service
+
+# Common attacks and defences
+[table] Attack|Abuses|Defence ; Password spraying|weak common passwords|lockout policy, MFA ; Kerberoasting|weak service account passwords|long random passwords, gMSA ; AS-REP roasting|accounts without pre-auth|require pre-auth ; Pass-the-hash|NTLM hash reuse|LAPS, disable NTLM
+
+> BloodHound maps relationships between users, groups and computers to show the shortest path to Domain Admin.
+
+! Practise only in labs like TryHackMe or HTB Academy, never on a real company network without written permission.
+''',
+    keyPoints: ['DC = central identity and login.', 'Kerberos uses tickets, not passwords.', 'Weak service passwords enable Kerberoasting.'],
+    complexity: 'Large domains mean many paths; tools map them',
+    videoId: 'VLWt0-8BOV4',
+    videoTitle: 'Active Directory · Professor Messer',
+    exam: ['CEH v13 · Module 04: Enumeration (LDAP, Kerberos)', 'CEH v13 · Module 06: System Hacking (password attacks)', 'CCSA · Identity Awareness (AD integration and user-based policies)'],
+    practice: [
+      PracticeLink('TryHackMe', 'Active Directory Basics', 'https://tryhackme.com/room/winadbasics'),
+      PracticeLink('TryHackMe', 'Breaching Active Directory', 'https://tryhackme.com/room/breachingad'),
+      PracticeLink('HTB Academy', 'Introduction to Active Directory', 'https://academy.hackthebox.com/course/preview/introduction-to-active-directory'),
+    ],
+  ),
+];

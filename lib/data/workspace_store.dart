@@ -225,7 +225,7 @@ class WorkspaceStore extends ChangeNotifier {
     }
 
     await _persist();
-    if (item['kind'] == 'reminder') {
+    if (item['kind'] == 'reminder' || item['kind'] == 'milestone') {
       if (item['done'] == true || item['deleted'] == true) {
         await NotificationService.instance.cancel(item);
       } else {

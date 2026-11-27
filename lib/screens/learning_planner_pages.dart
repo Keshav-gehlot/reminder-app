@@ -4,6 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import '../data/lessons.dart';
+import '../data/quizzes.dart';
+import '../services/spaced_repetition.dart';
 import '../data/workspace_store.dart';
 import '../theme.dart';
 import '../widgets/notes_view.dart';
@@ -20,10 +22,13 @@ Map<String, dynamic>? _progressFor(WorkspaceStore store, Lesson lesson) {
 
 bool _isDone(WorkspaceStore store, Lesson l) => _progressFor(store, l)?['done'] == true;
 
-bool _needsReview(WorkspaceStore store, Lesson lesson) {
-  final progress = _progressFor(store, lesson);
-  return progress != null && progress['confidence'] == 'review';
-}
+bool _needsReview(WorkspaceStore store, Lesson lesson) => isReviewDue(_progressFor(store, lesson));
+
+/// Solved topics whose spaced-repetition review is due today or earlier.
+List<Lesson> dueLessons(WorkspaceStore store) => lessons.where((l) => _needsReview(store, l)).toList();
+
+void openLesson(BuildContext context, WorkspaceStore store, Lesson lesson) => Navigator.of(context)
+    .push(MaterialPageRoute(builder: (_) => LessonPage(lesson: lesson, store: store)));
 
 Future<void> _saveProgress(WorkspaceStore store, Lesson lesson, Map<String, dynamic> changes) {
   final current = _progressFor(store, lesson) ?? <String, dynamic>{};
@@ -64,6 +69,143 @@ List<Lesson> _ordered(String area) => lessons.where((l) => l.area == area).toLis
     return c != 0 ? c : lessons.indexOf(a).compareTo(lessons.indexOf(b));
   });
 
+// ─────────────────────────────── Quiz ───────────────────────────────
+
+class QuizView extends StatefulWidget {
+  const QuizView({super.key, required this.lesson, required this.store});
+  final Lesson lesson;
+  final WorkspaceStore store;
+  @override
+  State<QuizView> createState() => _QuizViewState();
+}
+
+class _QuizViewState extends State<QuizView> with AutomaticKeepAliveClientMixin {
+  final Map<int, int> picked = {};
+  bool saved = false;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  List<QuizQuestion> get questions => quizzes[widget.lesson.title] ?? const [];
+
+  Future<void> pick(int qi, int oi) async {
+    if (picked.containsKey(qi)) return;
+    setState(() => picked[qi] = oi);
+    if (picked.length == questions.length && !saved) {
+      saved = true;
+      final score = [for (var i = 0; i < questions.length; i++) if (picked[i] == questions[i].answer) 1].length;
+      final p = _progressFor(widget.store, widget.lesson);
+      final best = (p?['quizBest'] as num?)?.toInt() ?? 0;
+      await _saveProgress(widget.store, widget.lesson, {
+        'quizLast': score,
+        'quizBest': score > best ? score : best,
+        'quizAt': DateTime.now().toUtc().toIso8601String(),
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final qs = questions;
+    if (qs.isEmpty) {
+      return const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('No quiz for this topic yet.')));
+    }
+    final score = [for (var i = 0; i < qs.length; i++) if (picked[i] == qs[i].answer) 1].length;
+    final finished = picked.length == qs.length;
+    final best = (_progressFor(widget.store, widget.lesson)?['quizBest'] as num?)?.toInt();
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
+      Row(children: [
+        Text('${picked.length} of ${qs.length} answered',
+            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.muted, fontFeatures: [FontFeature.tabularFigures()])),
+        const Spacer(),
+        if (best != null) _Pill(icon: Icons.emoji_events_outlined, iconColor: AppColors.accent, label: 'Best $best/${qs.length}'),
+      ]),
+      const SizedBox(height: 8),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: LinearProgressIndicator(value: picked.length / qs.length, minHeight: 8, backgroundColor: AppColors.line),
+      ),
+      const SizedBox(height: 16),
+      for (var qi = 0; qi < qs.length; qi++) ...[
+        Text('${qi + 1}. ${qs[qi].q}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, height: 1.4)),
+        const SizedBox(height: 8),
+        for (var oi = 0; oi < qs[qi].options.length; oi++) _option(qi, oi, qs[qi]),
+        if (picked.containsKey(qi))
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
+            child: Text(
+              '${picked[qi] == qs[qi].answer ? 'Correct.' : 'Not quite.'} ${qs[qi].why}',
+              style: TextStyle(color: picked[qi] == qs[qi].answer ? AppColors.success : AppColors.danger, fontWeight: FontWeight.w600, height: 1.4),
+            ),
+          ),
+        const SizedBox(height: 20),
+      ],
+      if (finished)
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: score == qs.length ? AppColors.successSoft : AppColors.primarySoft,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(children: [
+            Text('$score / ${qs.length}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, fontFeatures: [FontFeature.tabularFigures()])),
+            const SizedBox(height: 4),
+            Text(score == qs.length ? 'Perfect. This topic is sticking.' : 'Read the notes again for the ones you missed.', textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => setState(() {
+                picked.clear();
+                saved = false;
+              }),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try again'),
+            ),
+          ]),
+        ),
+    ]);
+  }
+
+  Widget _option(int qi, int oi, QuizQuestion q) {
+    final chosen = picked[qi];
+    final answered = chosen != null;
+    final isAnswer = oi == q.answer;
+    final isChosen = chosen == oi;
+    Color border = AppColors.line, fill = Colors.white;
+    IconData? icon;
+    if (answered && isAnswer) {
+      border = AppColors.success;
+      fill = AppColors.successSoft;
+      icon = Icons.check_circle;
+    } else if (answered && isChosen) {
+      border = AppColors.danger;
+      fill = const Color(0xFFFDECEC);
+      icon = Icons.cancel;
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: fill,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: border, width: 1.4)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: answered ? null : () => pick(qi, oi),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(children: [
+                Expanded(child: Text(q.options[oi], style: const TextStyle(fontSize: 15))),
+                if (icon != null) Icon(icon, color: border, size: 20),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─────────────────────────────── Study list ───────────────────────────────
 
 class StudyPage extends StatefulWidget {
@@ -87,8 +229,8 @@ class _StudyPageState extends State<StudyPage> {
     final upNext = all.where((l) => !_isDone(store, l)).firstOrNull;
     final q = query.trim().toLowerCase();
     final list = all.where((t) {
-      if (filter == 'To review' && !_needsReview(store, t)) return false;
-      if (filter != 'All' && filter != 'To review' && t.level != filter) return false;
+      if (filter == 'Due for review' && !_needsReview(store, t)) return false;
+      if (filter != 'All' && filter != 'Due for review' && t.level != filter) return false;
       return q.isEmpty || t.title.toLowerCase().contains(q) || t.summary.toLowerCase().contains(q);
     }).toList();
 
@@ -118,7 +260,7 @@ class _StudyPageState extends State<StudyPage> {
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(children: [
-          for (final f in const ['All', 'Beginner', 'Intermediate', 'Advanced', 'To review'])
+          for (final f in const ['All', 'Beginner', 'Intermediate', 'Advanced', 'Due for review'])
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: ChoiceChip(label: Text(f), selected: filter == f, onSelected: (_) => setState(() => filter = f)),
@@ -338,12 +480,12 @@ class _LessonPageState extends State<LessonPage> {
               child: Text('Nice work! How confident are you?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             ),
           ),
-          ListTile(leading: const Icon(Icons.sentiment_very_satisfied), title: const Text('Confident, I got it'), onTap: () => Navigator.pop(ctx, 'easy')),
-          ListTile(leading: const Icon(Icons.sentiment_satisfied), title: const Text('Okay, with a few hints'), onTap: () => Navigator.pop(ctx, 'ok')),
+          ListTile(leading: const Icon(Icons.sentiment_very_satisfied), title: const Text('Confident, I got it'), subtitle: const Text('Review in a week'), onTap: () => Navigator.pop(ctx, 'easy')),
+          ListTile(leading: const Icon(Icons.sentiment_satisfied), title: const Text('Okay, with a few hints'), subtitle: const Text('Review in 3 days'), onTap: () => Navigator.pop(ctx, 'ok')),
           ListTile(
             leading: const Icon(Icons.flag_outlined),
             title: const Text('Review this again later'),
-            subtitle: const Text('Adds it to your "To review" list'),
+            subtitle: const Text('Comes back tomorrow in "Due for review"'),
             onTap: () => Navigator.pop(ctx, 'review'),
           ),
           const SizedBox(height: 8),
@@ -354,8 +496,8 @@ class _LessonPageState extends State<LessonPage> {
     await _saveProgress(widget.store, t, {
       'done': true,
       'doneAt': DateTime.now().toUtc().toIso8601String(),
-      'confidence': choice,
       'answer': answer.text,
+      ...scheduleReview(choice),
     });
     if (!mounted) return;
     final next = _ordered(t.area).where((l) => !_isDone(widget.store, l)).firstOrNull;
@@ -381,18 +523,67 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
+  Future<void> review(String grade) async {
+    final t = widget.lesson;
+    final prev = (_progressFor(widget.store, t)?['interval'] as num?)?.toInt();
+    final next = scheduleReview(grade, previousInterval: grade == 'review' ? null : prev);
+    await _saveProgress(widget.store, t, next);
+    toast(grade == 'review' ? 'Back tomorrow.' : 'Next review in ${next['interval']} days.');
+  }
+
+  Widget reviewCard() {
+    final p = _progressFor(widget.store, widget.lesson);
+    if (p == null || p['done'] != true) return const SizedBox.shrink();
+    final due = isReviewDue(p);
+    if (!due) {
+      final label = reviewLabel(p);
+      if (label.isEmpty) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(children: [
+          const Icon(Icons.event_repeat, size: 18, color: AppColors.muted),
+          const SizedBox(width: 8),
+          Text('Next review $label', style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
+        ]),
+      );
+    }
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: AppColors.warningSoft, borderRadius: BorderRadius.circular(16)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [
+          Icon(Icons.event_repeat, color: AppColors.warning),
+          SizedBox(width: 8),
+          Text('Review due', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        ]),
+        const SizedBox(height: 6),
+        const Text('Try the question again without hints, or take the quiz, then rate how it went.'),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: OutlinedButton(onPressed: () => review('review'), child: const Text('Again'))),
+          const SizedBox(width: 8),
+          Expanded(child: FilledButton.tonal(onPressed: () => review('ok'), child: const Text('Good'))),
+          const SizedBox(width: 8),
+          Expanded(child: FilledButton(onPressed: () => review('easy'), child: const Text('Easy'))),
+        ]),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = widget.lesson;
     final hasLabs = t.practice.isNotEmpty || t.exam.isNotEmpty;
     return DefaultTabController(
-      length: hasLabs ? 3 : 2,
+      length: hasLabs ? 4 : 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(t.title),
-          bottom: TabBar(tabs: [
+          bottom: TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
             const Tab(text: 'Learn'),
             const Tab(text: 'Practice'),
+            const Tab(text: 'Quiz'),
             if (hasLabs) Tab(text: t.area == 'CTF' ? 'Labs & exams' : (t.area == 'AI' ? 'Hands-on' : 'Problems')),
           ]),
         ),
@@ -401,6 +592,7 @@ class _LessonPageState extends State<LessonPage> {
           builder: (context, _) => TabBarView(children: [
             _KeepAlive(child: learnTab()),
             practiceTab(),
+            QuizView(lesson: t, store: widget.store),
             if (hasLabs) labsTab(),
           ]),
         ),
@@ -480,6 +672,7 @@ class _LessonPageState extends State<LessonPage> {
     final shown = ((progress?['hints'] as num?)?.toInt() ?? 0).clamp(0, t.hints.length);
     const labels = ['Gentle nudge', 'Bigger hint', 'Almost there'];
     return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
+      reviewCard(),
       Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(color: Colors.white, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(16)),
